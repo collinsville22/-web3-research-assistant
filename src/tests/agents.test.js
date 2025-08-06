@@ -1,5 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
+
+// Fix for undici File reference issue
+if (typeof globalThis.File === 'undefined') {
+  globalThis.File = class File extends Blob {
+    constructor(fileBits, fileName, options) {
+      super(fileBits, options);
+      this.name = fileName;
+    }
+  };
+}
+
 import ResearchAgent from '../agents/ResearchAgent.js';
 import ContractAgent from '../agents/ContractAgent.js';
 import MarketAgent from '../agents/MarketAgent.js';

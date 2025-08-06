@@ -172,10 +172,6 @@
             gap: 20px;
         }
 
-        .example-btn {
-            background: #28a745;
-            margin-bottom: 20px;
-        }
 
         .contract-input {
             background: #f8f9fa;
@@ -247,8 +243,6 @@
         </div>
 
         <div class="card">
-            <button class="btn example-btn" onclick="loadExample()">📋 Load Example Project</button>
-            
             <form id="researchForm">
                 <div class="grid">
                     <div>
@@ -406,22 +400,6 @@
             }
         }
 
-        function loadExample() {
-            document.getElementById('projectName').value = 'DeFi Innovation Protocol';
-            document.getElementById('category').value = 'DeFi';
-            document.getElementById('website').value = 'https://defi-innovation.example.com';
-            document.getElementById('whitepaper').value = 'https://defi-innovation.example.com/whitepaper.pdf';
-            document.getElementById('tokenSymbol').value = 'DEFI';
-            document.getElementById('description').value = 'An innovative DeFi protocol combining yield farming with cross-chain liquidity';
-            
-            const contractInputs = document.querySelectorAll('input[name="contractAddress"]');
-            const blockchainSelects = document.querySelectorAll('select[name="blockchain"]');
-            
-            if (contractInputs[0]) {
-                contractInputs[0].value = '0x1234567890123456789012345678901234567890';
-                blockchainSelects[0].value = 'ethereum';
-            }
-        }
 
         function getScoreClass(score) {
             if (score >= 70) return 'high';
