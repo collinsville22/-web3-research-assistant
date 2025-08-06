@@ -1,45 +1,47 @@
 import BaseAgent from './BaseAgent.js';
+import JuliaOSSwarmClient from '../juliaos/JuliaOSSwarmClient.js';
 import ResearchAgent from './ResearchAgent.js';
 import ContractAgent from './ContractAgent.js';
 import MarketAgent from './MarketAgent.js';
-import axios from 'axios';
 import { JuliaOSConfig } from '../config/juliaos.js';
 
 export class SwarmCoordinator extends BaseAgent {
   constructor() {
     super('research');
-    this.agents = {
+    this.juliaosSwarm = new JuliaOSSwarmClient();
+    this.fallbackAgents = {
       research: new ResearchAgent(),
       contract: new ContractAgent(),
       market: new MarketAgent()
     };
     this.swarmConfig = JuliaOSConfig.swarm;
+    this.useJuliaOS = false;
   }
 
   async coordinateResearch(projectData) {
     await this.log('Starting swarm-coordinated research analysis');
 
     try {
-      // Initialize swarm coordination with JuliaOS
+      // Try to initialize JuliaOS swarm first
       const swarmSession = await this.initializeSwarm(projectData);
       
-      // Execute agents in parallel for efficiency
-      const [researchResult, contractResult, marketResult] = await Promise.allSettled([
-        this.agents.research.analyzeProject(projectData),
-        this.analyzeContracts(projectData.contracts),
-        this.agents.market.analyzeMarket(projectData)
-      ]);
-
-      // Coordinate results through JuliaOS swarm intelligence
-      const coordinatedAnalysis = await this.coordinateResults({
-        research: researchResult.status === 'fulfilled' ? researchResult.value : { error: researchResult.reason },
-        contracts: contractResult.status === 'fulfilled' ? contractResult.value : { error: contractResult.reason },
-        market: marketResult.status === 'fulfilled' ? marketResult.value : { error: marketResult.reason }
-      }, swarmSession);
+      let coordinatedAnalysis;
+      
+      if (this.useJuliaOS) {
+        // Use real JuliaOS swarm coordination
+        await this.log('Executing JuliaOS swarm analysis');
+        const swarmResults = await this.juliaosSwarm.executeSwarmAnalysis(projectData);
+        coordinatedAnalysis = this.processJuliaOSResults(swarmResults);
+      } else {
+        // Fallback to local agent coordination
+        await this.log('Using fallback agent coordination');
+        coordinatedAnalysis = await this.executeFallbackAnalysis(projectData);
+      }
 
       const finalReport = await this.generateFinalReport(coordinatedAnalysis, projectData);
 
-      await this.finalizeSwarm(swarmSession);
+      // Cleanup swarm resources
+      await this.finalizeSwarm();
 
       return finalReport;
     } catch (error) {
@@ -50,51 +52,92 @@ export class SwarmCoordinator extends BaseAgent {
 
   async initializeSwarm(projectData) {
     try {
-      const response = await axios.post(`${this.apiUrl}/api/swarm/initialize`, {
-        swarm_name: this.swarmConfig.name,
-        agents: this.swarmConfig.agents,
-        coordination_strategy: this.swarmConfig.coordination,
-        project_context: {
-          name: projectData.name,
-          category: projectData.category,
-          complexity: this.assessProjectComplexity(projectData)
-        }
-      }, {
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      // Check JuliaOS availability
+      const health = await this.juliaosSwarm.healthCheck();
+      
+      if (health.available) {
+        await this.log('Initializing JuliaOS swarm intelligence');
+        const swarmData = await this.juliaosSwarm.createWeb3ResearchSwarm(projectData);
+        this.useJuliaOS = true;
+        
+        return {
+          session_id: swarmData.swarm_id,
+          mode: 'juliaos_swarm',
+          agents: swarmData.agents,
+          coordination: 'real_time_ai'
+        };
+      } else {
+        throw new Error(health.error || 'JuliaOS backend not available');
+      }
 
-      await this.log(`Swarm initialized: ${response.data.session_id}`);
-      return response.data;
     } catch (error) {
-      await this.log(`Swarm initialization failed, proceeding with local coordination: ${error.message}`, 'warn');
-      return { session_id: 'local-' + Date.now(), mode: 'local' };
+      await this.log(`JuliaOS swarm initialization failed, using fallback: ${error.message}`, 'warn');
+      this.useJuliaOS = false;
+      
+      return { 
+        session_id: 'local-' + Date.now(), 
+        mode: 'local_fallback',
+        agents: ['research', 'contract', 'market'],
+        coordination: 'local_processing'
+      };
     }
   }
 
-  async coordinateResults(agentResults, swarmSession) {
-    if (swarmSession.mode === 'local') {
-      return this.localCoordination(agentResults);
-    }
+  /**
+   * Process results from JuliaOS swarm execution
+   */
+  processJuliaOSResults(swarmResults) {
+    const { swarm_results, consensus_data } = swarmResults;
+    
+    return {
+      consensus_score: consensus_data.consensus_score,
+      confidence_level: consensus_data.confidence,
+      weighted_recommendation: this.generateRecommendationFromScore(consensus_data.consensus_score),
+      conflicting_assessments: consensus_data.agreement === 'weak' ? ['score_variance_high'] : [],
+      
+      // Map JuliaOS agent results to expected format
+      research: swarm_results.research_lead || {},
+      contracts: swarm_results.security_analyst || {},
+      market: swarm_results.market_analyst || {},
+      
+      swarm_intelligence: {
+        success_rate: swarmResults.success_rate,
+        participating_agents: consensus_data.participating_agents,
+        agreement_level: consensus_data.agreement,
+        score_variance: consensus_data.variance
+      }
+    };
+  }
 
-    try {
-      const response = await axios.post(`${this.apiUrl}/api/swarm/coordinate`, {
-        session_id: swarmSession.session_id,
-        agent_results: agentResults,
-        coordination_type: 'consensus_analysis'
-      }, {
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json'
-        }
-      });
+  /**
+   * Execute fallback analysis using local agents
+   */
+  async executeFallbackAnalysis(projectData) {
+    // Execute local agents in parallel
+    const [researchResult, contractResult, marketResult] = await Promise.allSettled([
+      this.fallbackAgents.research.analyzeProject(projectData),
+      this.analyzeContracts(projectData.contracts),
+      this.fallbackAgents.market.analyzeMarket(projectData)
+    ]);
 
-      return response.data;
-    } catch (error) {
-      await this.log(`Swarm coordination failed, using local coordination: ${error.message}`, 'warn');
-      return this.localCoordination(agentResults);
+    // Process fallback results
+    const agentResults = {
+      research: researchResult.status === 'fulfilled' ? researchResult.value : { error: researchResult.reason },
+      contracts: contractResult.status === 'fulfilled' ? contractResult.value : { error: contractResult.reason },
+      market: marketResult.status === 'fulfilled' ? marketResult.value : { error: marketResult.reason }
+    };
+
+    return this.localCoordination(agentResults);
+  }
+
+  async finalizeSwarm() {
+    if (this.useJuliaOS) {
+      try {
+        await this.juliaosSwarm.cleanup();
+        await this.log('JuliaOS swarm cleanup completed');
+      } catch (error) {
+        await this.log(`Swarm cleanup warning: ${error.message}`, 'warn');
+      }
     }
   }
 
@@ -314,6 +357,14 @@ export class SwarmCoordinator extends BaseAgent {
     if (score >= 80) return 'low';
     if (score >= 60) return 'medium';
     return 'high';
+  }
+
+  generateRecommendationFromScore(score) {
+    if (score >= 80) return 'STRONG BUY';
+    if (score >= 65) return 'BUY';
+    if (score >= 50) return 'HOLD';
+    if (score >= 35) return 'SELL';
+    return 'STRONG SELL';
   }
 
   calculateOverallSecurityScore(contractAnalyses) {
