@@ -1,0 +1,37 @@
+{
+  "name": "DeFi Innovation Protocol",
+  "category": "DeFi",
+  "website": "https://defi-innovation.example.com",
+  "whitepaper": "https://defi-innovation.example.com/whitepaper.pdf",
+  "token_symbol": "DEFI",
+  "contracts": [
+    {
+      "address": "0x1234567890123456789012345678901234567890",
+      "blockchain": "ethereum",
+      "purpose": "main_contract"
+    },
+    {
+      "address": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+      "blockchain": "solana",
+      "purpose": "token_program"
+    }
+  ],
+  "description": "An innovative DeFi protocol combining yield farming with cross-chain liquidity",
+  "social_links": {
+    "twitter": "https://twitter.com/defiinnovation",
+    "discord": "https://discord.gg/defiinnovation",
+    "telegram": "https://t.me/defiinnovation"
+  },
+  "team": [
+    {
+      "name": "Alice Johnson",
+      "role": "CEO & Founder",
+      "background": "Former Goldman Sachs, Stanford CS"
+    },
+    {
+      "name": "Bob Smith",
+      "role": "CTO",
+      "background": "Ex-Google, Ethereum Foundation contributor"
+    }
+  ]
+}

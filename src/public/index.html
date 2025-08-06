@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web3 Research Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results {
+            display: none;
+        }
+
+        .metric {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border-left: 5px solid #667eea;
+        }
+
+        .metric h4 {
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .score {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #28a745;
+        }
+
+        .score.medium {
+            color: #ffc107;
+        }
+
+        .score.low {
+            color: #dc3545;
+        }
+
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .tag {
+            background: #667eea;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .example-btn {
+            background: #28a745;
+            margin-bottom: 20px;
+        }
+
+        .contract-input {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .contract-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .contract-row select {
+            width: 120px;
+        }
+
+        .add-contract {
+            background: #28a745;
+            padding: 8px 15px;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .remove-contract {
+            background: #dc3545;
+            padding: 5px 10px;
+            font-size: 12px;
+            width: auto;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #f5c6cb;
+            margin-bottom: 20px;
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 40px;
+            opacity: 0.8;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .card {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Web3 Research Assistant</h1>
+            <p>AI-powered due diligence for Web3 projects using JuliaOS framework</p>
+        </div>
+
+        <div class="card">
+            <button class="btn example-btn" onclick="loadExample()">📋 Load Example Project</button>
+            
+            <form id="researchForm">
+                <div class="grid">
+                    <div>
+                        <div class="form-group">
+                            <label for="projectName">Project Name *</label>
+                            <input type="text" id="projectName" class="form-control" required 
+                                   placeholder="e.g., Uniswap Protocol">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="category">Category</label>
+                            <select id="category" class="form-control">
+                                <option value="DeFi">DeFi</option>
+                                <option value="NFT">NFT</option>
+                                <option value="GameFi">GameFi</option>
+                                <option value="Layer 1">Layer 1</option>
+                                <option value="Layer 2">Layer 2</option>
+                                <option value="Infrastructure">Infrastructure</option>
+                                <option value="DAO">DAO</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="website">Website URL</label>
+                            <input type="url" id="website" class="form-control" 
+                                   placeholder="https://example.com">
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="form-group">
+                            <label for="whitepaper">Whitepaper URL</label>
+                            <input type="url" id="whitepaper" class="form-control" 
+                                   placeholder="https://example.com/whitepaper.pdf">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="tokenSymbol">Token Symbol</label>
+                            <input type="text" id="tokenSymbol" class="form-control" 
+                                   placeholder="e.g., UNI">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="description">Description</label>
+                            <textarea id="description" class="form-control" rows="3" 
+                                      placeholder="Brief description of the project..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="contract-input">
+                    <label><strong>Smart Contracts (Optional)</strong></label>
+                    <div id="contractsList">
+                        <div class="contract-row">
+                            <input type="text" class="form-control" placeholder="Contract address" 
+                                   name="contractAddress">
+                            <select class="form-control" name="blockchain">
+                                <option value="ethereum">Ethereum</option>
+                                <option value="solana">Solana</option>
+                                <option value="polygon">Polygon</option>
+                                <option value="bsc">BSC</option>
+                            </select>
+                            <button type="button" class="btn remove-contract" onclick="removeContract(this)">×</button>
+                        </div>
+                    </div>
+                    <button type="button" class="btn add-contract" onclick="addContract()">+ Add Contract</button>
+                </div>
+
+                <button type="submit" class="btn" id="analyzeBtn">
+                    🔬 Start AI Analysis
+                </button>
+            </form>
+
+            <div class="loading" id="loadingDiv">
+                <div class="spinner"></div>
+                <p>🤖 AI agents are analyzing the project...</p>
+                <p><small>This may take 30-60 seconds</small></p>
+            </div>
+
+            <div class="error" id="errorDiv" style="display: none;"></div>
+
+            <div class="results" id="resultsDiv">
+                <h3>📊 Analysis Results</h3>
+                
+                <div class="grid">
+                    <div class="metric">
+                        <h4>Overall Recommendation</h4>
+                        <div class="score" id="recommendation">-</div>
+                    </div>
+                    
+                    <div class="metric">
+                        <h4>Consensus Score</h4>
+                        <div class="score" id="consensusScore">-</div>
+                    </div>
+                    
+                    <div class="metric">
+                        <h4>Confidence Level</h4>
+                        <div class="score" id="confidenceLevel">-</div>
+                    </div>
+                </div>
+
+                <div class="metric">
+                    <h4>Executive Summary</h4>
+                    <p id="executiveSummary">-</p>
+                </div>
+
+                <div class="metric">
+                    <h4>Key Findings</h4>
+                    <div id="keyFindings">-</div>
+                </div>
+
+                <div class="metric">
+                    <h4>Risk Factors</h4>
+                    <div id="riskFactors">-</div>
+                </div>
+
+                <div class="metric">
+                    <h4>Analysis Timestamp</h4>
+                    <p id="timestamp">-</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Built with JuliaOS AI Framework | For educational purposes only</p>
+        </div>
+    </div>
+
+    <script>
+        let contractCount = 1;
+
+        function addContract() {
+            contractCount++;
+            const contractsList = document.getElementById('contractsList');
+            const newRow = document.createElement('div');
+            newRow.className = 'contract-row';
+            newRow.innerHTML = `
+                <input type="text" class="form-control" placeholder="Contract address" name="contractAddress">
+                <select class="form-control" name="blockchain">
+                    <option value="ethereum">Ethereum</option>
+                    <option value="solana">Solana</option>
+                    <option value="polygon">Polygon</option>
+                    <option value="bsc">BSC</option>
+                </select>
+                <button type="button" class="btn remove-contract" onclick="removeContract(this)">×</button>
+            `;
+            contractsList.appendChild(newRow);
+        }
+
+        function removeContract(button) {
+            const contractsList = document.getElementById('contractsList');
+            if (contractsList.children.length > 1) {
+                button.parentElement.remove();
+            }
+        }
+
+        function loadExample() {
+            document.getElementById('projectName').value = 'DeFi Innovation Protocol';
+            document.getElementById('category').value = 'DeFi';
+            document.getElementById('website').value = 'https://defi-innovation.example.com';
+            document.getElementById('whitepaper').value = 'https://defi-innovation.example.com/whitepaper.pdf';
+            document.getElementById('tokenSymbol').value = 'DEFI';
+            document.getElementById('description').value = 'An innovative DeFi protocol combining yield farming with cross-chain liquidity';
+            
+            const contractInputs = document.querySelectorAll('input[name="contractAddress"]');
+            const blockchainSelects = document.querySelectorAll('select[name="blockchain"]');
+            
+            if (contractInputs[0]) {
+                contractInputs[0].value = '0x1234567890123456789012345678901234567890';
+                blockchainSelects[0].value = 'ethereum';
+            }
+        }
+
+        function getScoreClass(score) {
+            if (score >= 70) return 'high';
+            if (score >= 50) return 'medium';
+            return 'low';
+        }
+
+        function formatList(items) {
+            if (!items || items.length === 0) return 'None identified';
+            return '<ul>' + items.map(item => `<li>${item}</li>`).join('') + '</ul>';
+        }
+
+        document.getElementById('researchForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const projectData = {
+                name: formData.get('projectName') || document.getElementById('projectName').value,
+                category: document.getElementById('category').value,
+                website: document.getElementById('website').value,
+                whitepaper: document.getElementById('whitepaper').value,
+                token_symbol: document.getElementById('tokenSymbol').value,
+                description: document.getElementById('description').value,
+                contracts: []
+            };
+
+            // Collect contract data
+            const contractAddresses = document.querySelectorAll('input[name="contractAddress"]');
+            const blockchains = document.querySelectorAll('select[name="blockchain"]');
+            
+            contractAddresses.forEach((input, index) => {
+                if (input.value.trim()) {
+                    projectData.contracts.push({
+                        address: input.value.trim(),
+                        blockchain: blockchains[index].value,
+                        purpose: 'main_contract'
+                    });
+                }
+            });
+
+            // Show loading state
+            document.getElementById('loadingDiv').style.display = 'block';
+            document.getElementById('resultsDiv').style.display = 'none';
+            document.getElementById('errorDiv').style.display = 'none';
+            document.getElementById('analyzeBtn').disabled = true;
+
+            try {
+                const response = await fetch('/api/research', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(projectData)
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    const report = result.report;
+                    
+                    // Update UI with results
+                    document.getElementById('recommendation').textContent = report.overall_recommendation;
+                    document.getElementById('consensusScore').textContent = report.consensus_score + '/100';
+                    document.getElementById('consensusScore').className = 'score ' + getScoreClass(report.consensus_score);
+                    document.getElementById('confidenceLevel').textContent = (report.confidence_level * 100).toFixed(1) + '%';
+                    document.getElementById('confidenceLevel').className = 'score ' + getScoreClass(report.confidence_level * 100);
+                    document.getElementById('executiveSummary').textContent = report.executive_summary || 'No summary available';
+                    document.getElementById('keyFindings').innerHTML = formatList(report.key_findings);
+                    document.getElementById('riskFactors').innerHTML = formatList(report.risk_factors);
+                    document.getElementById('timestamp').textContent = new Date(report.analysis_timestamp).toLocaleString();
+
+                    document.getElementById('resultsDiv').style.display = 'block';
+                } else {
+                    throw new Error(result.error || 'Analysis failed');
+                }
+
+            } catch (error) {
+                document.getElementById('errorDiv').textContent = 'Analysis failed: ' + error.message;
+                document.getElementById('errorDiv').style.display = 'block';
+            } finally {
+                document.getElementById('loadingDiv').style.display = 'none';
+                document.getElementById('analyzeBtn').disabled = false;
+            }
+        });
+
+        // Health check on page load
+        fetch('/health')
+            .then(response => response.json())
+            .then(data => {
+                console.log('✅ API Health Check:', data);
+            })
+            .catch(error => {
+                console.warn('⚠️ API not available:', error);
+                document.getElementById('errorDiv').textContent = 'Warning: API server may not be running. Please start the server first.';
+                document.getElementById('errorDiv').style.display = 'block';
+            });
+    </script>
+</body>
+</html>
