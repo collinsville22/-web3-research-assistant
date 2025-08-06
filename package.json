@@ -34,12 +34,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-username/web3-research-assistant.git"
+    "url": "https://github.com/collinsville22/-web3-research-assistant.git"
   },
   "bugs": {
-    "url": "https://github.com/your-username/web3-research-assistant/issues"
+    "url": "https://github.com/collinsville22/-web3-research-assistant/issues"
   },
-  "homepage": "https://github.com/your-username/web3-research-assistant#readme",
+  "homepage": "https://flourishing-licorice-5dc1a6.netlify.app",
   "dependencies": {
     "@solana/web3.js": "^1.87.6",
     "axios": "^1.6.2",

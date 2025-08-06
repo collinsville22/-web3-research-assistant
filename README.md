@@ -4,9 +4,9 @@ An AI-powered decentralized application for comprehensive Web3 project research 
 
 ## 🌐 Live Demo & Links
 
-- **🔗 GitHub Repository**: [https://github.com/your-username/web3-research-assistant](https://github.com/your-username/web3-research-assistant)
-- **🌍 Live Demo**: [https://web3-research-assistant.vercel.app](https://web3-research-assistant.vercel.app) 
-- **📡 API Endpoint**: [https://web3-research-assistant-api.vercel.app](https://web3-research-assistant-api.vercel.app)
+- **🔗 GitHub Repository**: [https://github.com/collinsville22/-web3-research-assistant](https://github.com/collinsville22/-web3-research-assistant)
+- **🌍 Live Demo**: [https://flourishing-licorice-5dc1a6.netlify.app](https://flourishing-licorice-5dc1a6.netlify.app) 
+- **📡 API Endpoint**: [https://flourishing-licorice-5dc1a6.netlify.app/.netlify/functions/research](https://flourishing-licorice-5dc1a6.netlify.app/.netlify/functions/research)
 - **📖 Deployment Guide**: [DEPLOYMENT.md](./DEPLOYMENT.md)
 
 > **Quick Test**: Visit the live demo and click "Load Example Project" to see the AI agents in action!
@@ -82,7 +82,7 @@ julia --project=. src/main.jl
 
 ```bash
 # Clone this repository
-git clone <your-repo-url>
+git clone https://github.com/collinsville22/-web3-research-assistant.git
 cd web3-research-assistant
 
 # Install dependencies
@@ -355,9 +355,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support & Contact
 
-- **Issues**: [GitHub Issues](https://github.com/your-username/web3-research-assistant/issues)
-- **Documentation**: [Project Wiki](https://github.com/your-username/web3-research-assistant/wiki)
-- **Community**: [Discord Server](https://discord.gg/your-discord)
+- **Issues**: [GitHub Issues](https://github.com/collinsville22/-web3-research-assistant/issues)
+- **Developer**: [Twitter @Collinscribes](https://x.com/Collinscribes)
+- **Repository**: [GitHub Repository](https://github.com/collinsville22/-web3-research-assistant)
 
 ---
 
