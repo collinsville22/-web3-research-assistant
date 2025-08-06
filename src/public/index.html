@@ -469,7 +469,7 @@
             document.getElementById('analyzeBtn').disabled = true;
 
             try {
-                const response = await fetch('/api/research', {
+                const response = await fetch('/.netlify/functions/research', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -508,7 +508,7 @@
         });
 
         // Health check on page load
-        fetch('/health')
+        fetch('/.netlify/functions/health')
             .then(response => response.json())
             .then(data => {
                 console.log('✅ API Health Check:', data);
