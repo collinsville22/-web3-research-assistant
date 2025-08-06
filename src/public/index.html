@@ -12,11 +12,43 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             line-height: 1.6;
-            color: #333;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 40% 80%, rgba(120, 198, 121, 0.3) 0%, transparent 50%),
+                linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
             min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Animated background particles */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                radial-gradient(2px 2px at 20px 30px, #00ffff, transparent),
+                radial-gradient(2px 2px at 40px 70px, #ff00ff, transparent),
+                radial-gradient(1px 1px at 90px 40px, #ffff00, transparent),
+                radial-gradient(1px 1px at 130px 80px, #00ffff, transparent),
+                radial-gradient(2px 2px at 160px 30px, #ff00ff, transparent);
+            background-repeat: repeat;
+            background-size: 200px 100px;
+            animation: sparkle 20s linear infinite;
+            opacity: 0.4;
+            pointer-events: none;
+        }
+
+        @keyframes sparkle {
+            from { transform: translateY(0px); }
+            to { transform: translateY(-100px); }
         }
 
         .container {
@@ -29,25 +61,96 @@
             text-align: center;
             color: white;
             margin-bottom: 40px;
+            position: relative;
+            z-index: 2;
         }
 
         .header h1 {
-            font-size: 3rem;
-            margin-bottom: 10px;
-            font-weight: 700;
+            font-size: 3.5rem;
+            margin-bottom: 15px;
+            font-weight: 800;
+            background: linear-gradient(45deg, #00ffff, #ff00ff, #ffff00, #00ffff);
+            background-size: 400% 400%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: neonGlow 3s ease-in-out infinite, textShimmer 8s ease-in-out infinite;
+            text-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
         }
 
         .header p {
-            font-size: 1.2rem;
+            font-size: 1.3rem;
             opacity: 0.9;
+            background: linear-gradient(45deg, #ffffff, #00ffff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 20px;
+        }
+
+        @keyframes neonGlow {
+            0%, 100% { 
+                text-shadow: 
+                    0 0 5px rgba(0, 255, 255, 0.8),
+                    0 0 10px rgba(0, 255, 255, 0.8),
+                    0 0 15px rgba(0, 255, 255, 0.8),
+                    0 0 20px rgba(0, 255, 255, 0.8);
+            }
+            50% { 
+                text-shadow: 
+                    0 0 10px rgba(255, 0, 255, 0.8),
+                    0 0 20px rgba(255, 0, 255, 0.8),
+                    0 0 30px rgba(255, 0, 255, 0.8),
+                    0 0 40px rgba(255, 0, 255, 0.8);
+            }
+        }
+
+        @keyframes textShimmer {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
 
         .card {
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+            background: linear-gradient(145deg, rgba(26, 26, 46, 0.95), rgba(22, 33, 62, 0.95));
+            border-radius: 25px;
+            padding: 35px;
+            box-shadow: 
+                0 20px 60px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1),
+                0 0 20px rgba(0, 255, 255, 0.1);
             margin-bottom: 30px;
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            position: relative;
+            z-index: 2;
+            animation: cardFloat 6s ease-in-out infinite;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 25px;
+            padding: 1px;
+            background: linear-gradient(45deg, #00ffff, transparent, #ff00ff, transparent, #00ffff);
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask-composite: exclude;
+            animation: borderGlow 4s linear infinite;
+            opacity: 0.6;
+        }
+
+        @keyframes cardFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-5px); }
+        }
+
+        @keyframes borderGlow {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 200% 50%; }
         }
 
         .form-group {
@@ -56,63 +159,127 @@
 
         .form-group label {
             display: block;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
             font-weight: 600;
-            color: #555;
+            color: #ffffff;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+            font-size: 1rem;
+            position: relative;
         }
 
         .form-control {
             width: 100%;
-            padding: 12px 16px;
-            border: 2px solid #e1e5e9;
-            border-radius: 10px;
+            padding: 15px 20px;
+            border: 2px solid rgba(0, 255, 255, 0.3);
+            border-radius: 15px;
             font-size: 16px;
-            transition: border-color 0.3s;
+            background: linear-gradient(145deg, rgba(10, 10, 10, 0.8), rgba(26, 26, 46, 0.8));
+            color: #ffffff;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+
+        .form-control::placeholder {
+            color: rgba(255, 255, 255, 0.5);
         }
 
         .form-control:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: #00ffff;
+            box-shadow: 
+                0 0 20px rgba(0, 255, 255, 0.4),
+                inset 0 0 20px rgba(0, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .form-control:hover {
+            border-color: rgba(255, 0, 255, 0.5);
+            box-shadow: 0 0 15px rgba(255, 0, 255, 0.3);
         }
 
         .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: linear-gradient(45deg, #00ffff, #ff00ff, #ffff00, #00ffff);
+            background-size: 400% 400%;
+            color: #000000;
             border: none;
-            padding: 15px 30px;
-            border-radius: 10px;
+            padding: 18px 35px;
+            border-radius: 15px;
             font-size: 18px;
-            font-weight: 600;
+            font-weight: 700;
             cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: all 0.3s ease;
             width: 100%;
+            position: relative;
+            overflow: hidden;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            animation: gradientShift 3s ease infinite;
+            box-shadow: 
+                0 0 20px rgba(0, 255, 255, 0.4),
+                0 0 40px rgba(255, 0, 255, 0.3);
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
         }
 
         .btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 
+                0 0 30px rgba(0, 255, 255, 0.6),
+                0 0 60px rgba(255, 0, 255, 0.4),
+                0 15px 35px rgba(0, 0, 0, 0.3);
+            animation: gradientShift 1s ease infinite;
+        }
+
+        .btn:active {
+            transform: translateY(-1px) scale(0.98);
         }
 
         .btn:disabled {
-            opacity: 0.6;
+            opacity: 0.5;
             cursor: not-allowed;
+            animation: none;
+            transform: none;
+            box-shadow: none;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
 
         .loading {
             display: none;
             text-align: center;
-            margin: 20px 0;
+            margin: 30px 0;
+            color: #ffffff;
         }
 
         .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top: 4px solid #00ffff;
+            border-right: 4px solid #ff00ff;
             border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 15px;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite, colorPulse 2s ease-in-out infinite;
+            margin: 0 auto 20px;
+            box-shadow: 
+                0 0 20px rgba(0, 255, 255, 0.4),
+                0 0 40px rgba(255, 0, 255, 0.2);
         }
 
         @keyframes spin {
@@ -120,21 +287,67 @@
             100% { transform: rotate(360deg); }
         }
 
+        @keyframes colorPulse {
+            0%, 100% { 
+                box-shadow: 
+                    0 0 20px rgba(0, 255, 255, 0.4),
+                    0 0 40px rgba(255, 0, 255, 0.2);
+            }
+            50% { 
+                box-shadow: 
+                    0 0 30px rgba(255, 0, 255, 0.6),
+                    0 0 60px rgba(0, 255, 255, 0.3);
+            }
+        }
+
+        .loading p {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+
         .results {
             display: none;
         }
 
         .metric {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 15px;
-            border-left: 5px solid #667eea;
+            background: linear-gradient(145deg, rgba(0, 255, 255, 0.1), rgba(255, 0, 255, 0.1));
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            backdrop-filter: blur(10px);
+            position: relative;
+            animation: metricGlow 4s ease-in-out infinite;
+        }
+
+        .metric::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(180deg, #00ffff, #ff00ff, #ffff00);
+            border-radius: 2px;
+            animation: barPulse 2s ease-in-out infinite;
         }
 
         .metric h4 {
-            color: #667eea;
-            margin-bottom: 5px;
+            color: #ffffff;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+            font-size: 1.1rem;
+        }
+
+        @keyframes metricGlow {
+            0%, 100% { box-shadow: 0 0 20px rgba(0, 255, 255, 0.2); }
+            50% { box-shadow: 0 0 30px rgba(255, 0, 255, 0.3); }
+        }
+
+        @keyframes barPulse {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 1; }
         }
 
         .score {
