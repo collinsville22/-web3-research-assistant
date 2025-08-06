@@ -2,6 +2,15 @@
 
 An AI-powered decentralized application for comprehensive Web3 project research and due diligence, built with the **JuliaOS framework**. This dApp leverages autonomous AI agents and swarm intelligence to analyze blockchain projects across multiple dimensions including technology, security, market dynamics, and risk assessment.
 
+## 🌐 Live Demo & Links
+
+- **🔗 GitHub Repository**: [https://github.com/your-username/web3-research-assistant](https://github.com/your-username/web3-research-assistant)
+- **🌍 Live Demo**: [https://web3-research-assistant.vercel.app](https://web3-research-assistant.vercel.app) 
+- **📡 API Endpoint**: [https://web3-research-assistant-api.vercel.app](https://web3-research-assistant-api.vercel.app)
+- **📖 Deployment Guide**: [DEPLOYMENT.md](./DEPLOYMENT.md)
+
+> **Quick Test**: Visit the live demo and click "Load Example Project" to see the AI agents in action!
+
 ## 🎯 Overview
 
 The Web3 Research Assistant demonstrates the power of JuliaOS by coordinating multiple AI agents that work together to provide comprehensive analysis of Web3 projects. It combines:
