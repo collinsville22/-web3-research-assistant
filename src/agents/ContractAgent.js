@@ -236,16 +236,24 @@ export class ContractAgent extends BaseAgent {
       issue.severity === 'critical' || issue.severity === 'high'
     ).length;
     
-    const externalRisk = externalData.risk_assessment?.overall_risk || 'medium';
-    const externalScore = externalData.risk_assessment?.risk_score || 50;
+    // Check if we have external data to factor in
+    const hasExternalData = externalData.risk_assessment && Object.keys(externalData.risk_assessment).length > 0;
+    const externalRisk = externalData.risk_assessment?.overall_risk;
+    const externalScore = externalData.risk_assessment?.risk_score;
 
-    // Factor in external risk assessment
+    // Calculate risk level
     let riskLevel;
-    if (score < 50 || criticalIssues > 2 || externalRisk === 'high') {
+    
+    // High risk conditions
+    if (score < 50 || criticalIssues > 2 || (hasExternalData && externalRisk === 'high')) {
       riskLevel = 'high';
-    } else if (score < 70 || criticalIssues > 0 || externalRisk === 'medium') {
+    } 
+    // Medium risk conditions  
+    else if (score < 70 || criticalIssues > 0 || (hasExternalData && externalRisk === 'medium')) {
       riskLevel = 'medium';
-    } else {
+    } 
+    // Low risk (good score, no critical issues, and no external high/medium risk)
+    else {
       riskLevel = 'low';
     }
 

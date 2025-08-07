@@ -109,7 +109,7 @@ export class MarketAgent extends BaseAgent {
 
       const results = await Promise.allSettled(searchPromises);
       
-      results.forEach((result, index) => {
+      for (const result of results) {
         if (result.status === 'fulfilled' && result.value.data && !result.value.data.error) {
           const { source, data } = result.value;
           marketData[source] = data;
@@ -117,7 +117,7 @@ export class MarketAgent extends BaseAgent {
           
           await this.log(`✅ Successfully retrieved data from ${source}`);
         }
-      });
+      }
 
       marketData.confidence_score = Math.min(100, marketData.successful_sources.length * 25);
       marketData.successful_sources = [...new Set(marketData.successful_sources)];
