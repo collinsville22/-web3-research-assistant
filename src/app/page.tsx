@@ -2,9 +2,40 @@
 
 import { useState } from 'react';
 
+// TypeScript interfaces for type safety
+interface TokenInfo {
+  name: string;
+  symbol: string;
+  address: string;
+  description: string;
+}
+
+interface KeyMetrics {
+  marketCap: number;
+  volume24h: number;
+  priceChange24h: number;
+  liquidity: number;
+}
+
+interface Analysis {
+  overallScore: number;
+  recommendation: string;
+  riskLevel: string;
+  keyMetrics: KeyMetrics;
+  findings: string[];
+  risks: string[];
+}
+
+interface AnalysisData {
+  tokenInfo: TokenInfo;
+  analysis: Analysis;
+  marketData?: object;
+  dexData?: object;
+}
+
 export default function Home() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisData, setAnalysisData] = useState(null);
+  const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
   const [error, setError] = useState('');
 
   const handleAnalyze = async (tokenInput: string) => {
@@ -92,26 +123,26 @@ export default function Home() {
             
             <div className="bg-gray-900 rounded-xl p-8">
               <h1 className="text-3xl font-bold mb-6">
-                {(analysisData as any).tokenInfo.name} ({(analysisData as any).tokenInfo.symbol})
+                {analysisData.tokenInfo.name} ({analysisData.tokenInfo.symbol})
               </h1>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 <div className="bg-gray-800 p-6 rounded-lg">
                   <h3 className="text-lg font-semibold mb-4">Overall Score</h3>
-                  <div className="text-4xl font-bold mb-2">{(analysisData as any).analysis.overallScore}/100</div>
-                  <div className="text-xl">{(analysisData as any).analysis.recommendation}</div>
+                  <div className="text-4xl font-bold mb-2">{analysisData.analysis.overallScore}/100</div>
+                  <div className="text-xl">{analysisData.analysis.recommendation}</div>
                   <div className="text-sm text-gray-400 mt-2">
-                    Risk Level: {(analysisData as any).analysis.riskLevel}
+                    Risk Level: {analysisData.analysis.riskLevel}
                   </div>
                 </div>
                 
                 <div className="bg-gray-800 p-6 rounded-lg">
                   <h3 className="text-lg font-semibold mb-4">Key Metrics</h3>
                   <div className="space-y-2 text-sm">
-                    <div>Market Cap: ${((analysisData as any).analysis.keyMetrics.marketCap || 0).toLocaleString()}</div>
-                    <div>24h Volume: ${((analysisData as any).analysis.keyMetrics.volume24h || 0).toLocaleString()}</div>
-                    <div>24h Change: {((analysisData as any).analysis.keyMetrics.priceChange24h || 0).toFixed(2)}%</div>
-                    <div>Liquidity: ${((analysisData as any).analysis.keyMetrics.liquidity || 0).toLocaleString()}</div>
+                    <div>Market Cap: ${(analysisData.analysis.keyMetrics.marketCap || 0).toLocaleString()}</div>
+                    <div>24h Volume: ${(analysisData.analysis.keyMetrics.volume24h || 0).toLocaleString()}</div>
+                    <div>24h Change: {(analysisData.analysis.keyMetrics.priceChange24h || 0).toFixed(2)}%</div>
+                    <div>Liquidity: ${(analysisData.analysis.keyMetrics.liquidity || 0).toLocaleString()}</div>
                   </div>
                 </div>
               </div>
@@ -120,7 +151,7 @@ export default function Home() {
                 <div>
                   <h3 className="text-lg font-semibold mb-4 text-green-400">🔬 Key Findings</h3>
                   <ul className="space-y-2">
-                    {(analysisData as any).analysis.findings.map((finding: string, i: number) => (
+                    {analysisData.analysis.findings.map((finding: string, i: number) => (
                       <li key={i} className="text-sm text-gray-300">• {finding}</li>
                     ))}
                   </ul>
@@ -129,7 +160,7 @@ export default function Home() {
                 <div>
                   <h3 className="text-lg font-semibold mb-4 text-red-400">⚠️ Risk Factors</h3>
                   <ul className="space-y-2">
-                    {(analysisData as any).analysis.risks.map((risk: string, i: number) => (
+                    {analysisData.analysis.risks.map((risk: string, i: number) => (
                       <li key={i} className="text-sm text-gray-300">• {risk}</li>
                     ))}
                   </ul>
