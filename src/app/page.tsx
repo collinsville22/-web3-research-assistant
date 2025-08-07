@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 
 // TypeScript interfaces for type safety
 interface TokenInfo {
@@ -160,9 +161,11 @@ export default function Home() {
               {/* Token Header */}
               <div className="flex items-center mb-6">
                 {analysisData.tokenInfo.image && (
-                  <img 
+                  <Image 
                     src={analysisData.tokenInfo.image} 
                     alt={analysisData.tokenInfo.name}
+                    width={64}
+                    height={64}
                     className="w-16 h-16 rounded-full mr-4"
                   />
                 )}
@@ -189,9 +192,9 @@ export default function Home() {
                   {/* Social Links */}
                   {(analysisData.tokenInfo.socialLinks?.twitter || 
                     analysisData.tokenInfo.socialLinks?.telegram || 
-                    analysisData.tokenInfo.websites?.length > 0) && (
+                    (analysisData.tokenInfo.websites && analysisData.tokenInfo.websites.length > 0)) && (
                     <div className="flex items-center mt-3 space-x-3">
-                      {analysisData.tokenInfo.websites?.length > 0 && (
+                      {analysisData.tokenInfo.websites && analysisData.tokenInfo.websites.length > 0 && (
                         <a 
                           href={analysisData.tokenInfo.websites[0]} 
                           target="_blank" 
