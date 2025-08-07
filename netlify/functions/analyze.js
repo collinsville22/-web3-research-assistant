@@ -182,37 +182,52 @@ function resolveTokenInfo(tokenInput, coinGeckoData, birdeyeData, dexData, block
 }
 
 function extractComprehensiveMetrics(coinGeckoData, birdeyeData, dexData) {
-  // Get current price from multiple sources
-  const currentPrice = coinGeckoData?.market_data?.current_price?.usd || 
-                      birdeyeData?.price?.value || 
-                      parseFloat(dexData?.pairs?.[0]?.priceUsd) || 0;
+  // Data source priority algorithm - avoid double counting
+  const hasCoinGecko = coinGeckoData?.market_data?.current_price?.usd;
+  const hasDexData = dexData?.pairs?.[0];
   
-  // Market cap from multiple sources
-  const marketCap = coinGeckoData?.market_data?.market_cap?.usd || 
-                   dexData?.pairs?.[0]?.marketCap || 0;
+  // PRIMARY DATA SOURCE SELECTION (avoid conflicts)
+  let currentPrice, marketCap, volume24h, priceChange24h, circulatingSupply, totalSupply, maxSupply;
   
-  // 24h volume
-  const volume24h = coinGeckoData?.market_data?.total_volume?.usd || 
-                   dexData?.pairs?.[0]?.volume?.h24 || 0;
+  if (hasCoinGecko) {
+    // Use CoinGecko as primary for established tokens
+    currentPrice = coinGeckoData.market_data.current_price.usd;
+    marketCap = coinGeckoData.market_data.market_cap?.usd || 0;
+    volume24h = coinGeckoData.market_data.total_volume?.usd || 0;
+    priceChange24h = coinGeckoData.market_data.price_change_percentage_24h || 0;
+    circulatingSupply = coinGeckoData.market_data.circulating_supply || 0;
+    totalSupply = coinGeckoData.market_data.total_supply || 0;
+    maxSupply = coinGeckoData.market_data.max_supply || 0;
+  } else if (hasDexData) {
+    // Use DexScreener as primary for new/unlisted tokens
+    currentPrice = parseFloat(dexData.pairs[0].priceUsd) || 0;
+    marketCap = dexData.pairs[0].marketCap || 0;
+    volume24h = dexData.pairs[0].volume?.h24 || 0;
+    priceChange24h = dexData.pairs[0].priceChange?.h24 || 0;
+    // DexScreener doesn't have supply data - try to get from other sources
+    circulatingSupply = 0;
+    totalSupply = 0;
+    maxSupply = 0;
+  } else {
+    // Fallback to Birdeye
+    currentPrice = birdeyeData?.price?.value || 0;
+    marketCap = 0;
+    volume24h = 0;
+    priceChange24h = 0;
+    circulatingSupply = 0;
+    totalSupply = 0;
+    maxSupply = 0;
+  }
   
-  // Price changes
-  const priceChange24h = coinGeckoData?.market_data?.price_change_percentage_24h || 
-                        dexData?.pairs?.[0]?.priceChange?.h24 || 0;
-  
-  // Supply data
-  const circulatingSupply = coinGeckoData?.market_data?.circulating_supply || 0;
-  const totalSupply = coinGeckoData?.market_data?.total_supply || 0;
-  const maxSupply = coinGeckoData?.market_data?.max_supply || 0;
-  
-  // DEX specific data
+  // DEX-only metrics (no conflicts)
   const liquidity = dexData?.pairs?.[0]?.liquidity?.usd || 0;
-  const fdv = dexData?.pairs?.[0]?.fdv || 0; // Fully diluted valuation
+  const fdv = dexData?.pairs?.[0]?.fdv || 0;
   
-  // Trading metrics from DexScreener
+  // Transaction count (DEX-specific, single source)
   const txns24h = dexData?.pairs?.[0]?.txns?.h24 ? 
                  (dexData.pairs[0].txns.h24.buys + dexData.pairs[0].txns.h24.sells) : 0;
   
-  // All-time high/low from CoinGecko
+  // All-time high/low (CoinGecko only)
   const ath = coinGeckoData?.market_data?.ath?.usd || 0;
   const atl = coinGeckoData?.market_data?.atl?.usd || 0;
   const athChangePercentage = coinGeckoData?.market_data?.ath_change_percentage?.usd || 0;
@@ -250,7 +265,10 @@ function extractComprehensiveMetrics(coinGeckoData, birdeyeData, dexData) {
     publicInterestScore: coinGeckoData?.public_interest_score || 0,
     
     // Market rank
-    marketCapRank: coinGeckoData?.market_cap_rank || 0
+    marketCapRank: coinGeckoData?.market_cap_rank || 0,
+    
+    // Data source indicator
+    primaryDataSource: hasCoinGecko ? 'CoinGecko' : (hasDexData ? 'DexScreener' : 'Birdeye')
   };
 }
 

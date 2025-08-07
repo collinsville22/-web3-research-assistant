@@ -31,6 +31,7 @@ interface KeyMetrics {
   developerScore: number;
   publicInterestScore: number;
   marketCapRank: number;
+  primaryDataSource: string;
 }
 
 interface Analysis {
@@ -176,10 +177,52 @@ export default function Home() {
                     {analysisData.analysis.keyMetrics.marketCapRank > 0 && (
                       <span>Rank #{analysisData.analysis.keyMetrics.marketCapRank}</span>
                     )}
-                    <span className="font-mono text-xs bg-gray-800 px-2 py-1 rounded">
+                    <button 
+                      onClick={() => navigator.clipboard.writeText(analysisData.tokenInfo.address)}
+                      className="font-mono text-xs bg-gray-800 hover:bg-gray-700 px-2 py-1 rounded transition-colors cursor-pointer"
+                      title="Click to copy address"
+                    >
                       {analysisData.tokenInfo.address.slice(0, 8)}...{analysisData.tokenInfo.address.slice(-6)}
-                    </span>
+                    </button>
                   </div>
+                  
+                  {/* Social Links */}
+                  {(analysisData.tokenInfo.socialLinks?.twitter || 
+                    analysisData.tokenInfo.socialLinks?.telegram || 
+                    analysisData.tokenInfo.websites?.length > 0) && (
+                    <div className="flex items-center mt-3 space-x-3">
+                      {analysisData.tokenInfo.websites?.length > 0 && (
+                        <a 
+                          href={analysisData.tokenInfo.websites[0]} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-400 hover:text-blue-300 text-sm"
+                        >
+                          🌐 Website
+                        </a>
+                      )}
+                      {analysisData.tokenInfo.socialLinks?.twitter && (
+                        <a 
+                          href={`https://twitter.com/${analysisData.tokenInfo.socialLinks.twitter}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-400 hover:text-blue-300 text-sm"
+                        >
+                          🐦 Twitter
+                        </a>
+                      )}
+                      {analysisData.tokenInfo.socialLinks?.telegram && (
+                        <a 
+                          href={`https://t.me/${analysisData.tokenInfo.socialLinks.telegram}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-400 hover:text-blue-300 text-sm"
+                        >
+                          ✈️ Telegram
+                        </a>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -254,14 +297,26 @@ export default function Home() {
                 </div>
 
                 <div className="bg-gray-800 p-4 rounded-lg">
-                  <h4 className="text-sm font-semibold text-gray-300 mb-2">Circulating Supply</h4>
-                  <div className="text-xl font-bold">
-                    {(analysisData.analysis.keyMetrics.circulatingSupply || 0).toLocaleString()}
-                  </div>
-                  {analysisData.analysis.keyMetrics.maxSupply > 0 && (
-                    <div className="text-xs text-gray-400">
-                      Max: {analysisData.analysis.keyMetrics.maxSupply.toLocaleString()}
+                  <h4 className="text-sm font-semibold text-gray-300 mb-2">Supply</h4>
+                  {analysisData.analysis.keyMetrics.circulatingSupply > 0 ? (
+                    <div>
+                      <div className="text-lg font-bold">
+                        {analysisData.analysis.keyMetrics.circulatingSupply.toLocaleString()}
+                      </div>
+                      <div className="text-xs text-gray-400">Circulating</div>
+                      {analysisData.analysis.keyMetrics.totalSupply > 0 && (
+                        <div className="text-sm text-gray-400 mt-1">
+                          Total: {analysisData.analysis.keyMetrics.totalSupply.toLocaleString()}
+                        </div>
+                      )}
+                      {analysisData.analysis.keyMetrics.maxSupply > 0 && (
+                        <div className="text-sm text-gray-400">
+                          Max: {analysisData.analysis.keyMetrics.maxSupply.toLocaleString()}
+                        </div>
+                      )}
                     </div>
+                  ) : (
+                    <div className="text-gray-400 text-sm">Supply data not available</div>
                   )}
                 </div>
               </div>
@@ -346,28 +401,47 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* JuliaOS Agent Information */}
-              <div className="bg-gradient-to-r from-purple-900/20 to-blue-900/20 border border-purple-500/30 rounded-lg p-6">
-                <h3 className="text-lg font-semibold mb-4 flex items-center">
-                  <span className="w-2 h-2 bg-purple-400 rounded-full mr-3 animate-pulse"></span>
-                  🤖 JuliaOS Multi-Agent Analysis
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-purple-400">3</div>
-                    <div className="text-xs text-gray-400">AI Agents Deployed</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-400">Real-time</div>
-                    <div className="text-xs text-gray-400">LLM Processing</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-green-400">Consensus</div>
-                    <div className="text-xs text-gray-400">Swarm Intelligence</div>
+              {/* Data Source & JuliaOS Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div className="bg-gray-800 p-6 rounded-lg">
+                  <h3 className="text-lg font-semibold mb-4">📊 Data Sources</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span>Primary Data:</span>
+                      <span className="font-semibold text-blue-400">
+                        {analysisData.analysis.keyMetrics.primaryDataSource}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>DEX Data:</span>
+                      <span className="text-green-400">DexScreener</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Social & Links:</span>
+                      <span className="text-purple-400">CoinGecko</span>
+                    </div>
                   </div>
                 </div>
-                <div className="text-sm text-gray-400 text-center">
-                  Analysis powered by ResearchAgent, MarketAgent, and ContractAgent using JuliaOS framework
+
+                <div className="bg-gradient-to-r from-purple-900/20 to-blue-900/20 border border-purple-500/30 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center">
+                    <span className="w-2 h-2 bg-purple-400 rounded-full mr-3 animate-pulse"></span>
+                    🤖 JuliaOS Analysis
+                  </h3>
+                  <div className="grid grid-cols-3 gap-4 mb-4">
+                    <div className="text-center">
+                      <div className="text-xl font-bold text-purple-400">3</div>
+                      <div className="text-xs text-gray-400">AI Agents</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-xl font-bold text-blue-400">Real-time</div>
+                      <div className="text-xs text-gray-400">Processing</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-xl font-bold text-green-400">Consensus</div>
+                      <div className="text-xs text-gray-400">Intelligence</div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
