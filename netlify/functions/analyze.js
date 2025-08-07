@@ -182,15 +182,27 @@ function resolveTokenInfo(tokenInput, coinGeckoData, birdeyeData, dexData, block
 }
 
 function extractComprehensiveMetrics(coinGeckoData, birdeyeData, dexData) {
+  console.log('🔍 Data extraction debug:', {
+    coinGeckoExists: !!coinGeckoData,
+    coinGeckoPrice: coinGeckoData?.market_data?.current_price?.usd,
+    coinGeckoMarketCap: coinGeckoData?.market_data?.market_cap?.usd,
+    dexExists: !!dexData?.pairs?.[0],
+    dexPrice: dexData?.pairs?.[0]?.priceUsd,
+    dexMarketCap: dexData?.pairs?.[0]?.marketCap,
+    birdeyeExists: !!birdeyeData
+  });
+
   // Data source priority algorithm - avoid double counting
-  const hasCoinGecko = coinGeckoData?.market_data?.current_price?.usd;
-  const hasDexData = dexData?.pairs?.[0];
+  const hasCoinGecko = coinGeckoData?.market_data?.current_price?.usd && coinGeckoData.market_data.current_price.usd > 0;
+  const hasDexData = dexData?.pairs?.[0]?.priceUsd && parseFloat(dexData.pairs[0].priceUsd) > 0;
+  const hasBirdeyeData = birdeyeData?.price?.value && birdeyeData.price.value > 0;
   
-  // PRIMARY DATA SOURCE SELECTION (avoid conflicts)
-  let currentPrice, marketCap, volume24h, priceChange24h, circulatingSupply, totalSupply, maxSupply;
+  // PRIMARY DATA SOURCE SELECTION (strict validation)
+  let currentPrice, marketCap, volume24h, priceChange24h, circulatingSupply, totalSupply, maxSupply, dataSource;
   
   if (hasCoinGecko) {
     // Use CoinGecko as primary for established tokens
+    dataSource = 'CoinGecko';
     currentPrice = coinGeckoData.market_data.current_price.usd;
     marketCap = coinGeckoData.market_data.market_cap?.usd || 0;
     volume24h = coinGeckoData.market_data.total_volume?.usd || 0;
@@ -198,25 +210,56 @@ function extractComprehensiveMetrics(coinGeckoData, birdeyeData, dexData) {
     circulatingSupply = coinGeckoData.market_data.circulating_supply || 0;
     totalSupply = coinGeckoData.market_data.total_supply || 0;
     maxSupply = coinGeckoData.market_data.max_supply || 0;
+    
+    console.log('✅ Using CoinGecko data:', { currentPrice, marketCap, volume24h });
   } else if (hasDexData) {
     // Use DexScreener as primary for new/unlisted tokens
-    currentPrice = parseFloat(dexData.pairs[0].priceUsd) || 0;
+    dataSource = 'DexScreener';
+    currentPrice = parseFloat(dexData.pairs[0].priceUsd);
     marketCap = dexData.pairs[0].marketCap || 0;
     volume24h = dexData.pairs[0].volume?.h24 || 0;
     priceChange24h = dexData.pairs[0].priceChange?.h24 || 0;
-    // DexScreener doesn't have supply data - try to get from other sources
+    // DexScreener doesn't have reliable supply data
     circulatingSupply = 0;
     totalSupply = 0;
     maxSupply = 0;
-  } else {
+    
+    console.log('✅ Using DexScreener data:', { currentPrice, marketCap, volume24h });
+  } else if (hasBirdeyeData) {
     // Fallback to Birdeye
-    currentPrice = birdeyeData?.price?.value || 0;
+    dataSource = 'Birdeye';
+    currentPrice = birdeyeData.price.value;
+    marketCap = 0; // Birdeye doesn't provide market cap in basic response
+    volume24h = 0;
+    priceChange24h = 0;
+    circulatingSupply = 0;
+    totalSupply = 0;
+    maxSupply = 0;
+    
+    console.log('✅ Using Birdeye data:', { currentPrice });
+  } else {
+    // No valid data sources
+    dataSource = 'None';
+    currentPrice = 0;
     marketCap = 0;
     volume24h = 0;
     priceChange24h = 0;
     circulatingSupply = 0;
     totalSupply = 0;
     maxSupply = 0;
+    
+    console.log('❌ No valid data sources found');
+  }
+  
+  // Sanity checks - reject obviously wrong data
+  if (marketCap < 0 || marketCap > 10000000000000) { // >$10T is suspicious
+    console.log('⚠️ Suspicious market cap detected, resetting:', marketCap);
+    marketCap = 0;
+  }
+  
+  if (volume24h < 0 || volume24h > marketCap * 10) { // Volume >10x market cap is suspicious
+    console.log('⚠️ Suspicious volume detected, resetting:', volume24h);
+    volume24h = 0;
   }
   
   // DEX-only metrics (no conflicts)
@@ -268,27 +311,66 @@ function extractComprehensiveMetrics(coinGeckoData, birdeyeData, dexData) {
     marketCapRank: coinGeckoData?.market_cap_rank || 0,
     
     // Data source indicator
-    primaryDataSource: hasCoinGecko ? 'CoinGecko' : (hasDexData ? 'DexScreener' : 'Birdeye')
+    primaryDataSource: dataSource
   };
 }
 
 async function fetchCoinGeckoData(tokenId) {
   try {
-    // Search for token first
-    const searchResponse = await fetch(`${COINGECKO_BASE}/search?query=${tokenId}`);
+    console.log(`🦎 Fetching CoinGecko data for: ${tokenId}`);
+    
+    // Try direct coin lookup first if it looks like a symbol
+    if (tokenId.length <= 5 && !tokenId.startsWith('0x')) {
+      try {
+        const directResponse = await fetch(`${COINGECKO_BASE}/coins/${tokenId.toLowerCase()}?localization=false&tickers=false&market_data=true&community_data=true&developer_data=true`);
+        if (directResponse.ok) {
+          const directData = await directResponse.json();
+          console.log(`✅ Found direct CoinGecko match for ${tokenId}`);
+          return directData;
+        }
+      } catch (err) {
+        console.log(`⚠️ Direct lookup failed for ${tokenId}, trying search...`);
+      }
+    }
+    
+    // Search for token
+    const searchResponse = await fetch(`${COINGECKO_BASE}/search?query=${encodeURIComponent(tokenId)}`);
+    
+    if (!searchResponse.ok) {
+      console.log(`❌ CoinGecko search failed: ${searchResponse.status}`);
+      return null;
+    }
+    
     const searchData = await searchResponse.json();
+    console.log(`🔍 CoinGecko search results: ${searchData.coins?.length || 0} matches`);
     
     if (searchData.coins && searchData.coins.length > 0) {
-      const coinId = searchData.coins[0].id;
+      // Find best match (prefer exact symbol match)
+      let bestMatch = searchData.coins[0];
+      for (const coin of searchData.coins) {
+        if (coin.symbol?.toLowerCase() === tokenId.toLowerCase()) {
+          bestMatch = coin;
+          break;
+        }
+      }
+      
+      console.log(`🎯 Using CoinGecko match: ${bestMatch.id} (${bestMatch.symbol})`);
       
       // Get detailed coin data
-      const coinResponse = await fetch(`${COINGECKO_BASE}/coins/${coinId}?localization=false&tickers=false&market_data=true&community_data=true&developer_data=true`);
+      const coinResponse = await fetch(`${COINGECKO_BASE}/coins/${bestMatch.id}?localization=false&tickers=false&market_data=true&community_data=true&developer_data=true`);
+      
+      if (!coinResponse.ok) {
+        console.log(`❌ CoinGecko details failed: ${coinResponse.status}`);
+        return null;
+      }
+      
       return await coinResponse.json();
     }
     
+    console.log(`❌ No CoinGecko matches found for: ${tokenId}`);
     return null;
   } catch (error) {
-    console.error('CoinGecko API error:', error);
+    console.error('❌ CoinGecko API error:', error.message);
     return null;
   }
 }
@@ -315,10 +397,27 @@ async function fetchBirdeyeData(tokenAddress) {
 
 async function fetchDexScreenerData(tokenAddress) {
   try {
+    console.log(`🔍 Fetching DexScreener data for: ${tokenAddress}`);
+    
     const response = await fetch(`${DEXSCREENER_BASE}/tokens/${tokenAddress}`);
-    return await response.json();
+    
+    if (!response.ok) {
+      console.log(`❌ DexScreener failed: ${response.status}`);
+      return null;
+    }
+    
+    const data = await response.json();
+    console.log(`📊 DexScreener pairs found: ${data.pairs?.length || 0}`);
+    
+    if (data.pairs && data.pairs.length > 0) {
+      // Sort by liquidity (highest first) to get the most reliable pair
+      data.pairs.sort((a, b) => (b.liquidity?.usd || 0) - (a.liquidity?.usd || 0));
+      console.log(`💰 Top pair liquidity: $${data.pairs[0].liquidity?.usd?.toLocaleString() || 0}`);
+    }
+    
+    return data;
   } catch (error) {
-    console.error('DexScreener API error:', error);
+    console.error('❌ DexScreener API error:', error.message);
     return null;
   }
 }
