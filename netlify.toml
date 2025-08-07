@@ -1,10 +1,18 @@
 [build]
-  command = "npm install"
+  command = "echo 'No build required'"
   functions = "netlify/functions"
   publish = "src/public"
 
 [build.environment]
   NODE_VERSION = "18"
+
+[functions]
+  directory = "netlify/functions"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
 
 [[redirects]]
   from = "/*"
