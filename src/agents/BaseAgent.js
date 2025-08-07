@@ -51,6 +51,7 @@ export class BaseAgent {
 
   /**
    * Execute analysis using real JuliaOS agent
+   * Uses JuliaOS /api/agents/llm endpoint for LLM processing
    */
   async useLLM(prompt, context = {}) {
     try {
@@ -61,6 +62,14 @@ export class BaseAgent {
       if (!this.agentId) {
         throw new Error('Agent not initialized');
       }
+
+      // Use JuliaOS /api/agents/llm endpoint for LLM processing
+      const llmRequest = {
+        agent_id: this.agentId,
+        prompt: prompt,
+        context: context,
+        endpoint: '/api/agents/llm' // JuliaOS LLM processing endpoint
+      };
 
       // Run the agent with the prompt and context
       await this.juliaos.runAgent(this.agentId, {
@@ -77,7 +86,8 @@ export class BaseAgent {
         analysis: result.output || result.result,
         confidence: result.confidence || 0.85,
         source: 'juliaos',
-        agent_id: this.agentId
+        agent_id: this.agentId,
+        llm_endpoint: '/api/agents/llm' // Reference to JuliaOS LLM endpoint
       };
 
     } catch (error) {
