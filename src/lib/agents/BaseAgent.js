@@ -1,12 +1,16 @@
 import JuliaOSClient from '../juliaos/JuliaOSClient.js';
-import { JuliaOSConfig } from '../config/juliaos.js';
 
 export class BaseAgent {
-  constructor(agentType) {
-    this.config = JuliaOSConfig.agents[agentType];
+  constructor(agentType, config = {}) {
     this.agentType = agentType;
+    this.config = {
+      name: `${agentType}Agent`,
+      description: `Advanced ${agentType} analysis agent for token research`,
+      strategy: config.strategy || 'comprehensive_analysis',
+      ...config
+    };
     this.juliaos = new JuliaOSClient();
-    this.agentId = null; // Will be set when agent is created in JuliaOS
+    this.agentId = null;
   }
 
   /**
@@ -16,69 +20,59 @@ export class BaseAgent {
     try {
       const health = await this.juliaos.healthCheck();
       if (!health.available) {
-        throw new Error(health.error || 'JuliaOS backend not available');
+        console.warn(`JuliaOS not available: ${health.error}. Using fallback analysis.`);
+        return null;
       }
 
-      // Create agent based on type
-      let agent;
-      if (this.agentType === 'research') {
-        agent = await this.juliaos.createResearchAgent(
-          this.config.name,
-          this.config.description
-        );
-      } else if (this.agentType === 'contract') {
-        agent = await this.juliaos.createContractAgent(
-          this.config.name,
-          this.config.description
-        );
-      } else {
-        agent = await this.juliaos.createResearchAgent(
-          this.config.name,
-          this.config.description
-        );
-      }
+      // Create agent in JuliaOS
+      const agent = await this.juliaos.createAgent(
+        this.agentType,
+        this.config.name,
+        this.config.description
+      );
 
-      this.agentId = agent.id;
-      await this.juliaos.startAgent(this.agentId);
-      await this.log(`Agent initialized with ID: ${this.agentId}`);
-      
-      return agent;
+      if (agent) {
+        this.agentId = agent.id;
+        await this.log(`Agent initialized with ID: ${this.agentId}`);
+        return agent;
+      }
     } catch (error) {
       await this.log(`Agent initialization failed: ${error.message}`, 'warn');
-      return null;
     }
+    
+    return null;
   }
 
   /**
-   * Execute analysis using real JuliaOS agent
+   * Execute analysis using JuliaOS agent.useLLM() equivalent
    * Uses JuliaOS /api/agents/llm endpoint for LLM processing
    */
   async useLLM(prompt, context = {}) {
     try {
+      // Initialize agent if not already done
       if (!this.agentId) {
-        await this.initialize();
+        const agent = await this.initialize();
+        if (!agent) {
+          return this.fallbackAnalysis(prompt, context);
+        }
       }
 
-      if (!this.agentId) {
-        throw new Error('Agent not initialized');
-      }
-
-      // Use JuliaOS /api/agents/llm endpoint for LLM processing
-      const llmRequest = {
-        agent_id: this.agentId,
+      // Prepare LLM request with JuliaOS format
+      const task = {
+        name: `${this.agentType}-llm-analysis`,
         prompt: prompt,
         context: context,
+        type: 'llm_processing',
         endpoint: '/api/agents/llm', // JuliaOS LLM processing endpoint
-        api_version: 'v1'
+        api_version: 'v1',
+        agent_type: this.agentType
       };
 
       // Run the agent with the prompt and context
-      await this.juliaos.runAgent(this.agentId, {
-        name: `${this.agentType}-analysis`,
-        prompt: prompt,
-        context: context,
-        ...context
-      });
+      const execution = await this.juliaos.runAgent(this.agentId, task);
+      if (!execution) {
+        throw new Error('Agent execution failed');
+      }
 
       // Wait for completion and get results
       const result = await this.juliaos.waitForCompletion(this.agentId);
@@ -88,7 +82,8 @@ export class BaseAgent {
         confidence: result.confidence || 0.85,
         source: 'juliaos',
         agent_id: this.agentId,
-        llm_endpoint: '/api/agents/llm' // Reference to JuliaOS LLM endpoint
+        llm_endpoint: '/api/agents/llm', // Reference to JuliaOS LLM endpoint
+        timestamp: new Date().toISOString()
       };
 
     } catch (error) {
@@ -109,15 +104,21 @@ export class BaseAgent {
       }
 
       if (!this.agentId) {
-        throw new Error('Agent not initialized');
+        return this.fallbackStrategy(data);
       }
 
-      // Execute strategy through JuliaOS
-      await this.juliaos.runAgent(this.agentId, {
+      const task = {
         name: `${this.agentType}-strategy`,
         strategy: this.config.strategy,
-        data: data
-      });
+        data: data,
+        type: 'strategy_execution'
+      };
+
+      // Execute strategy through JuliaOS
+      const execution = await this.juliaos.runAgent(this.agentId, task);
+      if (!execution) {
+        throw new Error('Strategy execution failed');
+      }
 
       const result = await this.juliaos.waitForCompletion(this.agentId);
       
@@ -125,7 +126,8 @@ export class BaseAgent {
         result: result.output || result.result,
         recommendations: result.recommendations || [],
         confidence: result.confidence || 0.8,
-        source: 'juliaos'
+        source: 'juliaos',
+        timestamp: new Date().toISOString()
       };
 
     } catch (error) {
@@ -140,7 +142,6 @@ export class BaseAgent {
   async cleanup() {
     if (this.agentId) {
       try {
-        await this.juliaos.stopAgent(this.agentId);
         await this.juliaos.deleteAgent(this.agentId);
         await this.log(`Agent ${this.agentId} cleaned up`);
       } catch (error) {
@@ -150,24 +151,29 @@ export class BaseAgent {
     }
   }
 
+  // Fallback methods for when JuliaOS is unavailable
   fallbackAnalysis(prompt, context) {
     return {
-      analysis: `Fallback analysis for: ${prompt}`,
-      confidence: 0.5,
-      source: 'local_fallback'
+      analysis: `Fallback analysis for: ${prompt}. Context: ${JSON.stringify(context)}`,
+      confidence: 0.6,
+      source: 'local_fallback',
+      timestamp: new Date().toISOString()
     };
   }
 
   fallbackStrategy(data) {
     return {
-      result: 'Fallback strategy executed',
-      recommendations: [],
-      confidence: 0.3
+      result: `Fallback strategy executed for ${this.agentType}`,
+      recommendations: ['Consider upgrading to JuliaOS for enhanced analysis'],
+      confidence: 0.4,
+      source: 'local_fallback',
+      timestamp: new Date().toISOString()
     };
   }
 
   async log(message, level = 'info') {
-    console.log(`[${this.agentType.toUpperCase()}] ${level.toUpperCase()}: ${message}`);
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] [${this.agentType.toUpperCase()}] ${level.toUpperCase()}: ${message}`);
   }
 }
 

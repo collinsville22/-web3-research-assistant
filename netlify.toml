@@ -1,7 +1,7 @@
 [build]
-  command = "echo 'No build required'"
+  command = "npm run build"
   functions = "netlify/functions"
-  publish = "src/public"
+  publish = "out"
 
 [build.environment]
   NODE_VERSION = "18"
