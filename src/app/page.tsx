@@ -11,10 +11,26 @@ interface TokenInfo {
 }
 
 interface KeyMetrics {
+  currentPrice: number;
   marketCap: number;
   volume24h: number;
   priceChange24h: number;
+  circulatingSupply: number;
+  totalSupply: number;
+  maxSupply: number;
   liquidity: number;
+  fdv: number;
+  txns24h: number;
+  ath: number;
+  atl: number;
+  athChangePercentage: number;
+  volumeToMarketCapRatio: number;
+  priceToAthRatio: number;
+  liquidityRatio: number;
+  communityScore: number;
+  developerScore: number;
+  publicInterestScore: number;
+  marketCapRank: number;
 }
 
 interface Analysis {
@@ -26,8 +42,26 @@ interface Analysis {
   risks: string[];
 }
 
+interface BlockchainInfo {
+  blockchain: string;
+  chainId: string;
+  isContractAddress: boolean;
+  addressFormat: string;
+}
+
 interface AnalysisData {
-  tokenInfo: TokenInfo;
+  tokenInfo: TokenInfo & {
+    blockchain: string;
+    chainId: string;
+    image?: string;
+    websites?: string[];
+    socialLinks?: {
+      twitter?: string;
+      telegram?: string;
+      discord?: string;
+    };
+  };
+  blockchainInfo: BlockchainInfo;
   analysis: Analysis;
   marketData?: object;
   dexData?: object;
@@ -122,11 +156,48 @@ export default function Home() {
             </button>
             
             <div className="bg-gray-900 rounded-xl p-8">
-              <h1 className="text-3xl font-bold mb-6">
-                {analysisData.tokenInfo.name} ({analysisData.tokenInfo.symbol})
-              </h1>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              {/* Token Header */}
+              <div className="flex items-center mb-6">
+                {analysisData.tokenInfo.image && (
+                  <img 
+                    src={analysisData.tokenInfo.image} 
+                    alt={analysisData.tokenInfo.name}
+                    className="w-16 h-16 rounded-full mr-4"
+                  />
+                )}
+                <div>
+                  <h1 className="text-3xl font-bold">
+                    {analysisData.tokenInfo.name} ({analysisData.tokenInfo.symbol})
+                  </h1>
+                  <div className="flex items-center mt-2 space-x-4 text-sm text-gray-400">
+                    <span className="bg-blue-600 px-2 py-1 rounded text-white capitalize">
+                      {analysisData.tokenInfo.blockchain}
+                    </span>
+                    {analysisData.analysis.keyMetrics.marketCapRank > 0 && (
+                      <span>Rank #{analysisData.analysis.keyMetrics.marketCapRank}</span>
+                    )}
+                    <span className="font-mono text-xs bg-gray-800 px-2 py-1 rounded">
+                      {analysisData.tokenInfo.address.slice(0, 8)}...{analysisData.tokenInfo.address.slice(-6)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Price and Core Metrics */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="bg-gray-800 p-6 rounded-lg">
+                  <h3 className="text-lg font-semibold mb-4">Price</h3>
+                  <div className="text-3xl font-bold mb-2">
+                    ${analysisData.analysis.keyMetrics.currentPrice.toFixed(6)}
+                  </div>
+                  <div className={`text-lg ${
+                    analysisData.analysis.keyMetrics.priceChange24h >= 0 ? 'text-green-400' : 'text-red-400'
+                  }`}>
+                    {analysisData.analysis.keyMetrics.priceChange24h >= 0 ? '+' : ''}
+                    {analysisData.analysis.keyMetrics.priceChange24h.toFixed(2)}%
+                  </div>
+                </div>
+                
                 <div className="bg-gray-800 p-6 rounded-lg">
                   <h3 className="text-lg font-semibold mb-4">Overall Score</h3>
                   <div className="text-4xl font-bold mb-2">{analysisData.analysis.overallScore}/100</div>
@@ -137,15 +208,123 @@ export default function Home() {
                 </div>
                 
                 <div className="bg-gray-800 p-6 rounded-lg">
-                  <h3 className="text-lg font-semibold mb-4">Key Metrics</h3>
-                  <div className="space-y-2 text-sm">
-                    <div>Market Cap: ${(analysisData.analysis.keyMetrics.marketCap || 0).toLocaleString()}</div>
-                    <div>24h Volume: ${(analysisData.analysis.keyMetrics.volume24h || 0).toLocaleString()}</div>
-                    <div>24h Change: {(analysisData.analysis.keyMetrics.priceChange24h || 0).toFixed(2)}%</div>
-                    <div>Liquidity: ${(analysisData.analysis.keyMetrics.liquidity || 0).toLocaleString()}</div>
+                  <h3 className="text-lg font-semibold mb-4">Market Cap</h3>
+                  <div className="text-2xl font-bold mb-2">
+                    ${(analysisData.analysis.keyMetrics.marketCap || 0).toLocaleString()}
                   </div>
+                  {analysisData.analysis.keyMetrics.fdv > 0 && (
+                    <div className="text-sm text-gray-400">
+                      FDV: ${analysisData.analysis.keyMetrics.fdv.toLocaleString()}
+                    </div>
+                  )}
                 </div>
               </div>
+
+              {/* Detailed Metrics Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <div className="bg-gray-800 p-4 rounded-lg">
+                  <h4 className="text-sm font-semibold text-gray-300 mb-2">24h Volume</h4>
+                  <div className="text-xl font-bold">
+                    ${(analysisData.analysis.keyMetrics.volume24h || 0).toLocaleString()}
+                  </div>
+                  {analysisData.analysis.keyMetrics.volumeToMarketCapRatio > 0 && (
+                    <div className="text-xs text-gray-400">
+                      {(analysisData.analysis.keyMetrics.volumeToMarketCapRatio * 100).toFixed(2)}% of MCap
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-gray-800 p-4 rounded-lg">
+                  <h4 className="text-sm font-semibold text-gray-300 mb-2">Liquidity</h4>
+                  <div className="text-xl font-bold">
+                    ${(analysisData.analysis.keyMetrics.liquidity || 0).toLocaleString()}
+                  </div>
+                  {analysisData.analysis.keyMetrics.liquidityRatio > 0 && (
+                    <div className="text-xs text-gray-400">
+                      {(analysisData.analysis.keyMetrics.liquidityRatio * 100).toFixed(2)}% of MCap
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-gray-800 p-4 rounded-lg">
+                  <h4 className="text-sm font-semibold text-gray-300 mb-2">24h Transactions</h4>
+                  <div className="text-xl font-bold">
+                    {(analysisData.analysis.keyMetrics.txns24h || 0).toLocaleString()}
+                  </div>
+                </div>
+
+                <div className="bg-gray-800 p-4 rounded-lg">
+                  <h4 className="text-sm font-semibold text-gray-300 mb-2">Circulating Supply</h4>
+                  <div className="text-xl font-bold">
+                    {(analysisData.analysis.keyMetrics.circulatingSupply || 0).toLocaleString()}
+                  </div>
+                  {analysisData.analysis.keyMetrics.maxSupply > 0 && (
+                    <div className="text-xs text-gray-400">
+                      Max: {analysisData.analysis.keyMetrics.maxSupply.toLocaleString()}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ATH/ATL Section */}
+              {analysisData.analysis.keyMetrics.ath > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                  <div className="bg-gray-800 p-6 rounded-lg">
+                    <h3 className="text-lg font-semibold mb-4 text-green-400">📈 All-Time High</h3>
+                    <div className="text-2xl font-bold mb-2">${analysisData.analysis.keyMetrics.ath.toFixed(6)}</div>
+                    <div className="text-sm text-gray-400">
+                      Current: {(analysisData.analysis.keyMetrics.priceToAthRatio * 100).toFixed(1)}% of ATH
+                    </div>
+                    <div className="text-sm text-red-400">
+                      {analysisData.analysis.keyMetrics.athChangePercentage.toFixed(2)}% from ATH
+                    </div>
+                  </div>
+                  
+                  <div className="bg-gray-800 p-6 rounded-lg">
+                    <h3 className="text-lg font-semibold mb-4 text-red-400">📉 All-Time Low</h3>
+                    <div className="text-2xl font-bold mb-2">${analysisData.analysis.keyMetrics.atl.toFixed(6)}</div>
+                    {analysisData.analysis.keyMetrics.atl > 0 && (
+                      <div className="text-sm text-green-400">
+                        {((analysisData.analysis.keyMetrics.currentPrice / analysisData.analysis.keyMetrics.atl - 1) * 100).toFixed(0)}x from ATL
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Community Scores */}
+              {(analysisData.analysis.keyMetrics.communityScore > 0 || 
+                analysisData.analysis.keyMetrics.developerScore > 0) && (
+                <div className="bg-gray-800 p-6 rounded-lg mb-8">
+                  <h3 className="text-lg font-semibold mb-4">📊 Community & Development Scores</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {analysisData.analysis.keyMetrics.communityScore > 0 && (
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-blue-400">
+                          {analysisData.analysis.keyMetrics.communityScore}/100
+                        </div>
+                        <div className="text-sm text-gray-400">Community Score</div>
+                      </div>
+                    )}
+                    {analysisData.analysis.keyMetrics.developerScore > 0 && (
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-purple-400">
+                          {analysisData.analysis.keyMetrics.developerScore}/100
+                        </div>
+                        <div className="text-sm text-gray-400">Developer Score</div>
+                      </div>
+                    )}
+                    {analysisData.analysis.keyMetrics.publicInterestScore > 0 && (
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-green-400">
+                          {analysisData.analysis.keyMetrics.publicInterestScore}/100
+                        </div>
+                        <div className="text-sm text-gray-400">Public Interest</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 <div>
