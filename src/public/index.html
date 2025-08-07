@@ -340,14 +340,36 @@
             font-size: 1.1rem;
         }
 
+        /* Optimized animations with better performance */
         @keyframes metricGlow {
-            0%, 100% { box-shadow: 0 0 20px rgba(0, 255, 255, 0.2); }
-            50% { box-shadow: 0 0 30px rgba(255, 0, 255, 0.3); }
+            0%, 100% { 
+                box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+                transform: translateZ(0); /* Enable hardware acceleration */
+            }
+            50% { 
+                box-shadow: 0 0 30px rgba(255, 0, 255, 0.3);
+                transform: translateZ(0);
+            }
         }
 
         @keyframes barPulse {
-            0%, 100% { opacity: 0.8; }
-            50% { opacity: 1; }
+            0%, 100% { 
+                opacity: 0.8; 
+                transform: translateZ(0);
+            }
+            50% { 
+                opacity: 1;
+                transform: translateZ(0);
+            }
+        }
+
+        /* Reduce motion for users who prefer it */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
         }
 
         .score {
@@ -884,9 +906,43 @@
             return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
         }
 
-        document.getElementById('researchForm').addEventListener('submit', async (e) => {
+        // Cache DOM elements for better performance
+        const elements = {
+            form: document.getElementById('researchForm'),
+            loadingDiv: document.getElementById('loadingDiv'),
+            resultsDiv: document.getElementById('resultsDiv'),
+            errorDiv: document.getElementById('errorDiv'),
+            analyzeBtn: document.getElementById('analyzeBtn'),
+            recommendation: document.getElementById('recommendation'),
+            consensusScore: document.getElementById('consensusScore'),
+            confidenceLevel: document.getElementById('confidenceLevel'),
+            executiveSummary: document.getElementById('executiveSummary'),
+            keyFindings: document.getElementById('keyFindings'),
+            riskFactors: document.getElementById('riskFactors'),
+            timestamp: document.getElementById('timestamp')
+        };
+
+        // Debounce function for better performance
+        function debounce(func, delay) {
+            let timeoutId;
+            return function (...args) {
+                clearTimeout(timeoutId);
+                timeoutId = setTimeout(() => func.apply(this, args), delay);
+            };
+        }
+
+        // Optimized form submission with performance improvements
+        elements.form.addEventListener('submit', debounce(async (e) => {
             e.preventDefault();
             
+            // Performance: Use requestAnimationFrame for DOM updates
+            requestAnimationFrame(() => {
+                elements.loadingDiv.style.display = 'block';
+                elements.resultsDiv.style.display = 'none';
+                elements.errorDiv.style.display = 'none';
+                elements.analyzeBtn.disabled = true;
+            });
+
             const formData = new FormData(e.target);
             const projectData = {
                 name: formData.get('projectName') || document.getElementById('projectName').value,
@@ -898,88 +954,118 @@
                 contracts: []
             };
 
-            // Collect contract data
-            const contractAddresses = document.querySelectorAll('input[name="contractAddress"]');
-            const blockchains = document.querySelectorAll('select[name="blockchain"]');
+            // Optimized contract data collection
+            const contractInputs = document.querySelectorAll('input[name="contractAddress"]');
+            const blockchainSelects = document.querySelectorAll('select[name="blockchain"]');
             
-            contractAddresses.forEach((input, index) => {
-                if (input.value.trim()) {
+            for (let i = 0; i < contractInputs.length; i++) {
+                const address = contractInputs[i].value.trim();
+                if (address) {
                     projectData.contracts.push({
-                        address: input.value.trim(),
-                        blockchain: blockchains[index].value,
+                        address: address,
+                        blockchain: blockchainSelects[i].value,
                         purpose: 'main_contract'
                     });
                 }
-            });
-
-            // Show loading state
-            document.getElementById('loadingDiv').style.display = 'block';
-            document.getElementById('resultsDiv').style.display = 'none';
-            document.getElementById('errorDiv').style.display = 'none';
-            document.getElementById('analyzeBtn').disabled = true;
+            }
 
             try {
+                // Add timeout for better UX
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
                 const response = await fetch('/.netlify/functions/research', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(projectData)
+                    body: JSON.stringify(projectData),
+                    signal: controller.signal
                 });
 
+                clearTimeout(timeoutId);
                 const result = await response.json();
 
                 if (result.status === 'success') {
                     const report = result.report;
                     
-                    // Update main metrics with enhanced styling
-                    document.getElementById('recommendation').textContent = report.overall_recommendation;
-                    document.getElementById('consensusScore').textContent = report.consensus_score + '/100';
-                    document.getElementById('consensusScore').className = 'score large ' + getScoreClass(report.consensus_score);
-                    document.getElementById('confidenceLevel').textContent = (report.confidence_level * 100).toFixed(1) + '%';
-                    document.getElementById('confidenceLevel').className = 'score large ' + getScoreClass(report.confidence_level * 100);
-                    
-                    // Enhanced executive summary
-                    document.getElementById('executiveSummary').textContent = report.executive_summary || 'Multi-agent analysis completed with comprehensive insights';
-                    
-                    // Enhanced findings and risks
-                    document.getElementById('keyFindings').innerHTML = formatEnhancedList(report.key_findings, 'positive');
-                    document.getElementById('riskFactors').innerHTML = formatEnhancedList(report.risk_factors, 'risk');
-                    
-                    // Show data sources used
-                    updateDataSources(report);
-                    
-                    // Show agent breakdown
-                    updateAgentBreakdown(report);
-                    
-                    // Enhanced timestamp
-                    document.getElementById('timestamp').textContent = `${new Date(report.analysis_timestamp).toLocaleString()} (${formatTimeAgo(report.analysis_timestamp)})`;
+                    // Batch DOM updates for better performance
+                    requestAnimationFrame(() => {
+                        // Update main metrics with cached elements
+                        elements.recommendation.textContent = report.overall_recommendation;
+                        elements.consensusScore.textContent = report.consensus_score + '/100';
+                        elements.consensusScore.className = 'score large ' + getScoreClass(report.consensus_score);
+                        elements.confidenceLevel.textContent = (report.confidence_level * 100).toFixed(1) + '%';
+                        elements.confidenceLevel.className = 'score large ' + getScoreClass(report.confidence_level * 100);
+                        
+                        // Enhanced executive summary
+                        elements.executiveSummary.textContent = report.executive_summary || 'Multi-agent analysis completed with comprehensive insights';
+                        
+                        // Enhanced findings and risks
+                        elements.keyFindings.innerHTML = formatEnhancedList(report.key_findings, 'positive');
+                        elements.riskFactors.innerHTML = formatEnhancedList(report.risk_factors, 'risk');
+                        
+                        // Enhanced timestamp
+                        elements.timestamp.textContent = `${new Date(report.analysis_timestamp).toLocaleString()} (${formatTimeAgo(report.analysis_timestamp)})`;
 
-                    document.getElementById('resultsDiv').style.display = 'block';
+                        elements.resultsDiv.style.display = 'block';
+                    });
+
+                    // Run expensive operations separately to avoid blocking UI
+                    setTimeout(() => {
+                        updateDataSources(report);
+                        updateAgentBreakdown(report);
+                    }, 50);
                 } else {
                     throw new Error(result.error || 'Analysis failed');
                 }
 
             } catch (error) {
-                document.getElementById('errorDiv').textContent = 'Analysis failed: ' + error.message;
-                document.getElementById('errorDiv').style.display = 'block';
+                let errorMessage = 'Analysis failed: ';
+                if (error.name === 'AbortError') {
+                    errorMessage = 'Request timeout: Analysis took too long. Please try again.';
+                } else {
+                    errorMessage += error.message;
+                }
+                
+                requestAnimationFrame(() => {
+                    elements.errorDiv.textContent = errorMessage;
+                    elements.errorDiv.style.display = 'block';
+                });
             } finally {
-                document.getElementById('loadingDiv').style.display = 'none';
-                document.getElementById('analyzeBtn').disabled = false;
+                requestAnimationFrame(() => {
+                    elements.loadingDiv.style.display = 'none';
+                    elements.analyzeBtn.disabled = false;
+                });
             }
-        });
+        }, 300)); // 300ms debounce delay
 
-        // Health check on page load
-        fetch('/.netlify/functions/health')
-            .then(response => response.json())
-            .then(data => {
-                console.log('✅ API Health Check:', data);
-            })
-            .catch(error => {
-                console.warn('⚠️ API not available:', error);
-                document.getElementById('errorDiv').textContent = 'Warning: API server may not be running. Please start the server first.';
-                document.getElementById('errorDiv').style.display = 'block';
-            });
+        // Optimized health check with better error handling
+        const healthCheckWithRetry = async (retries = 2) => {
+            for (let i = 0; i <= retries; i++) {
+                try {
+                    const response = await fetch('/.netlify/functions/health', {
+                        signal: AbortSignal.timeout(5000) // 5 second timeout
+                    });
+                    const data = await response.json();
+                    console.log('✅ API Health Check:', data);
+                    return;
+                } catch (error) {
+                    if (i === retries) {
+                        console.warn('⚠️ API not available after retries:', error.message);
+                        // Only show warning for network errors, not for expected development scenarios
+                        if (!window.location.hostname.includes('localhost')) {
+                            elements.errorDiv.textContent = 'API connectivity check failed - some features may not work optimally.';
+                            elements.errorDiv.style.display = 'block';
+                        }
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1))); // Progressive delay
+                }
+            }
+        };
+
+        // Run health check on page load
+        healthCheckWithRetry();
     </script>
 </body>
 </html>
