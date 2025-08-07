@@ -68,7 +68,8 @@ export class BaseAgent {
         agent_id: this.agentId,
         prompt: prompt,
         context: context,
-        endpoint: '/api/agents/llm' // JuliaOS LLM processing endpoint
+        endpoint: '/api/agents/llm', // JuliaOS LLM processing endpoint
+        api_version: 'v1'
       };
 
       // Run the agent with the prompt and context
