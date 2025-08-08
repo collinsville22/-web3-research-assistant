@@ -150,7 +150,7 @@ const DEXSCREENER_BASE = 'https://api.dexscreener.com/latest/dex';
 const SOLANA_TRACKER_BASE = 'https://api.solanatracker.io';
 
 // Secure API key management with multiple layers of protection
-const SOLANA_TRACKER_API_KEY = process.env.SOLANA_TRACKER_API_KEY || '4a522555-848e-4877-ae22-6cea2c89d8b8';
+const SOLANA_TRACKER_API_KEY = process.env.SOLANA_TRACKER_API_KEY || '2bd9911b-59a9-4db3-a45a-d243f9f7da80';
 
 // Professional trader analysis function
 function generateProfessionalTraderAnalysis(projectData, juliaOSResult) {
@@ -625,14 +625,17 @@ async function fetchSolanaTrackerData(tokenAddress) {
   try {
     console.log(`🔥 Fetching Solana Tracker data for: ${tokenAddress}`);
     
-    // Enhanced security headers with rate limiting protection
+    // Enhanced security headers with multiple authentication methods
     const secureHeaders = {
       'X-API-Key': SOLANA_TRACKER_API_KEY,
+      'Authorization': `Bearer ${SOLANA_TRACKER_API_KEY}`,
       'Content-Type': 'application/json',
       'Accept': 'application/json',
       'User-Agent': 'TokenAI-Analysis-Bot/1.0',
       'X-Rate-Limit-Protection': 'enabled',
-      'X-Request-Source': 'netlify-function'
+      'X-Request-Source': 'netlify-function',
+      'X-Client-Version': '2.0',
+      'Cache-Control': 'no-cache'
     };
     
     // Log API key status (masked for security)
@@ -661,6 +664,8 @@ async function fetchSolanaTrackerData(tokenAddress) {
     
     console.log('🚀 Fetching from Solana Tracker API endpoints...');
     console.log('📍 Base URL:', SOLANA_TRACKER_BASE);
+    console.log('🎯 Target Token:', tokenAddress);
+    console.log('🔒 Security Headers:', Object.keys(secureHeaders));
     
     // Parallel fetch with enhanced error handling and multiple endpoint attempts
     const endpointPromises = [
