@@ -141,35 +141,110 @@ export default function Home() {
       
       if (result.success) {
         try {
-          // Force a complete state refresh with error handling
+          // Comprehensive data sanitization with multiple safety layers
+          const safeSanitizeData = (data) => {
+            try {
+              // Ensure all required top-level properties exist
+              const safeData = {
+                tokenInfo: {
+                  name: data?.tokenInfo?.name || 'Unknown Token',
+                  symbol: data?.tokenInfo?.symbol || 'UNKNOWN',
+                  address: data?.tokenInfo?.address || '',
+                  description: data?.tokenInfo?.description || '',
+                  blockchain: data?.tokenInfo?.blockchain || 'unknown',
+                  chainId: data?.tokenInfo?.chainId || 'unknown',
+                  image: data?.tokenInfo?.image || null,
+                  websites: Array.isArray(data?.tokenInfo?.websites) ? data.tokenInfo.websites : [],
+                  socialLinks: {
+                    twitter: data?.tokenInfo?.socialLinks?.twitter || '',
+                    telegram: data?.tokenInfo?.socialLinks?.telegram || '',
+                    discord: data?.tokenInfo?.socialLinks?.discord || ''
+                  }
+                },
+                blockchainInfo: {
+                  blockchain: data?.blockchainInfo?.blockchain || 'unknown',
+                  chainId: data?.blockchainInfo?.chainId || 'unknown',
+                  isContractAddress: Boolean(data?.blockchainInfo?.isContractAddress),
+                  addressFormat: data?.blockchainInfo?.addressFormat || 'unknown'
+                },
+                analysis: {
+                  overallScore: Number(data?.analysis?.overallScore) || 0,
+                  recommendation: data?.analysis?.recommendation || 'No recommendation',
+                  riskLevel: data?.analysis?.riskLevel || 'Unknown',
+                  findings: Array.isArray(data?.analysis?.findings) ? data.analysis.findings : [],
+                  risks: Array.isArray(data?.analysis?.risks) ? data.analysis.risks : [],
+                  keyMetrics: {
+                    currentPrice: Number(data?.analysis?.keyMetrics?.currentPrice) || 0,
+                    marketCap: Number(data?.analysis?.keyMetrics?.marketCap) || 0,
+                    volume24h: Number(data?.analysis?.keyMetrics?.volume24h) || 0,
+                    priceChange24h: Number(data?.analysis?.keyMetrics?.priceChange24h) || 0,
+                    circulatingSupply: Number(data?.analysis?.keyMetrics?.circulatingSupply) || 0,
+                    totalSupply: Number(data?.analysis?.keyMetrics?.totalSupply) || 0,
+                    maxSupply: Number(data?.analysis?.keyMetrics?.maxSupply) || 0,
+                    liquidity: Number(data?.analysis?.keyMetrics?.liquidity) || 0,
+                    fdv: Number(data?.analysis?.keyMetrics?.fdv) || 0,
+                    txns24h: Number(data?.analysis?.keyMetrics?.txns24h) || 0,
+                    ath: Number(data?.analysis?.keyMetrics?.ath) || 0,
+                    atl: Number(data?.analysis?.keyMetrics?.atl) || 0,
+                    athChangePercentage: Number(data?.analysis?.keyMetrics?.athChangePercentage) || 0,
+                    volumeToMarketCapRatio: Number(data?.analysis?.keyMetrics?.volumeToMarketCapRatio) || 0,
+                    priceToAthRatio: Number(data?.analysis?.keyMetrics?.priceToAthRatio) || 0,
+                    liquidityRatio: Number(data?.analysis?.keyMetrics?.liquidityRatio) || 0,
+                    communityScore: Number(data?.analysis?.keyMetrics?.communityScore) || 0,
+                    developerScore: Number(data?.analysis?.keyMetrics?.developerScore) || 0,
+                    publicInterestScore: Number(data?.analysis?.keyMetrics?.publicInterestScore) || 0,
+                    marketCapRank: Number(data?.analysis?.keyMetrics?.marketCapRank) || 0,
+                    primaryDataSource: data?.analysis?.keyMetrics?.primaryDataSource || 'Unknown',
+                    hasSolanaData: Boolean(data?.analysis?.keyMetrics?.hasSolanaData),
+                    // Enhanced trader performance sanitization
+                    traderPerformance: (() => {
+                      const tp = data?.analysis?.keyMetrics?.traderPerformance;
+                      if (!tp || typeof tp !== 'object' || tp === null) {
+                        return null;
+                      }
+                      
+                      // Return sanitized trader performance data
+                      return {
+                        totalTraders: Math.max(0, Number(tp.totalTraders) || 0),
+                        profitableTraders: Math.max(0, Number(tp.profitableTraders) || 0),
+                        losingTraders: Math.max(0, Number(tp.losingTraders) || 0),
+                        averageProfit: Math.max(0, Number(tp.averageProfit) || 0),
+                        averageLoss: Math.max(0, Number(tp.averageLoss) || 0),
+                        topProfitAmount: Math.max(0, Number(tp.topProfitAmount) || 0),
+                        topLossAmount: Math.max(0, Number(tp.topLossAmount) || 0),
+                        winRate: Math.min(100, Math.max(0, Number(tp.winRate) || 0)),
+                        totalVolume: Math.max(0, Number(tp.totalVolume) || 0)
+                      };
+                    })()
+                  }
+                },
+                marketData: data?.marketData || null,
+                dexData: data?.dexData || null
+              };
+              
+              console.log('🔒 Data sanitization complete:', {
+                tokenName: safeData.tokenInfo.name,
+                hasTraderPerformance: !!safeData.analysis.keyMetrics.traderPerformance,
+                blockchain: safeData.tokenInfo.blockchain
+              });
+              
+              return safeData;
+            } catch (sanitizationError) {
+              console.error('❌ Critical sanitization error:', sanitizationError);
+              throw new Error('Data sanitization failed');
+            }
+          };
+
+          // Force a complete state refresh with enhanced error handling
           setTimeout(() => {
-            // Validate and sanitize the result data to prevent crashes
-            const sanitizedData = {
-              ...result.data,
-              analysis: {
-                ...result.data?.analysis,
-                keyMetrics: {
-                  ...result.data?.analysis?.keyMetrics,
-                  // Ensure traderPerformance is properly structured
-                  traderPerformance: result.data?.analysis?.keyMetrics?.traderPerformance && 
-                    typeof result.data.analysis.keyMetrics.traderPerformance === 'object' ? 
-                    {
-                      totalTraders: Number(result.data.analysis.keyMetrics.traderPerformance.totalTraders) || 0,
-                      profitableTraders: Number(result.data.analysis.keyMetrics.traderPerformance.profitableTraders) || 0,
-                      losingTraders: Number(result.data.analysis.keyMetrics.traderPerformance.losingTraders) || 0,
-                      averageProfit: Number(result.data.analysis.keyMetrics.traderPerformance.averageProfit) || 0,
-                      averageLoss: Number(result.data.analysis.keyMetrics.traderPerformance.averageLoss) || 0,
-                      topProfitAmount: Number(result.data.analysis.keyMetrics.traderPerformance.topProfitAmount) || 0,
-                      topLossAmount: Number(result.data.analysis.keyMetrics.traderPerformance.topLossAmount) || 0,
-                      winRate: Number(result.data.analysis.keyMetrics.traderPerformance.winRate) || 0,
-                      totalVolume: Number(result.data.analysis.keyMetrics.traderPerformance.totalVolume) || 0
-                    } : null
-                }
-              }
-            };
-            
-            setAnalysisData(sanitizedData);
-            console.log(`✅ Analysis data set for: ${sanitizedData?.tokenInfo?.name || tokenInput}`);
+            try {
+              const sanitizedData = safeSanitizeData(result.data);
+              setAnalysisData(sanitizedData);
+              console.log(`✅ Analysis data set safely for: ${sanitizedData.tokenInfo.name}`);
+            } catch (renderError) {
+              console.error('❌ Render preparation error:', renderError);
+              setError('Data processing completed but display preparation failed. Please try again.');
+            }
           }, 100);
         } catch (dataProcessingError) {
           console.error('❌ Frontend data processing error:', dataProcessingError);
@@ -247,9 +322,14 @@ export default function Home() {
             </button>
             
             <div className="bg-gray-900 rounded-xl p-8">
+              {/* Safe Rendering Wrapper */}
+              {(() => {
+                try {
+                  return (
+                    <>
               {/* Token Header */}
               <div className="flex items-center mb-6">
-                {analysisData.tokenInfo.image && (
+                {analysisData?.tokenInfo?.image && (
                   <Image 
                     src={analysisData.tokenInfo.image} 
                     alt={analysisData.tokenInfo.name}
@@ -453,8 +533,8 @@ export default function Home() {
               )}
 
               {/* Solana Trader Performance Analysis */}
-              {analysisData.analysis.keyMetrics.traderPerformance && 
-               analysisData.tokenInfo.blockchain === 'solana' && 
+              {analysisData?.analysis?.keyMetrics?.traderPerformance && 
+               analysisData?.tokenInfo?.blockchain === 'solana' && 
                analysisData.analysis.keyMetrics.traderPerformance.totalTraders > 0 && (
                 <div className="bg-gradient-to-r from-orange-900/20 to-yellow-900/20 border border-orange-500/30 rounded-lg p-6 mb-8">
                   <h3 className="text-xl font-semibold mb-6 flex items-center">
@@ -607,6 +687,26 @@ export default function Home() {
                   </div>
                 </div>
               </div>
+                    </>
+                  );
+                } catch (renderError) {
+                  console.error('❌ Critical rendering error:', renderError);
+                  return (
+                    <div className="text-center py-8">
+                      <div className="text-red-400 text-lg mb-4">⚠️ Display Error</div>
+                      <div className="text-gray-400 text-sm mb-4">
+                        Analysis completed but results cannot be displayed properly.
+                      </div>
+                      <button 
+                        onClick={() => setAnalysisData(null)}
+                        className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                      >
+                        Try Again
+                      </button>
+                    </div>
+                  );
+                }
+              })()}
             </div>
           </div>
         </div>
