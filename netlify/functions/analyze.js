@@ -171,7 +171,7 @@ exports.handler = async (event, context) => {
 const COINGECKO_BASE = 'https://api.coingecko.com/api/v3';
 const BIRDEYE_BASE = 'https://public-api.birdeye.so/public';
 const DEXSCREENER_BASE = 'https://api.dexscreener.com/latest/dex';
-const SOLANA_TRACKER_BASE = 'https://api.solanatracker.io';
+const SOLANA_TRACKER_BASE = 'https://data.solanatracker.io';
 
 // Secure API key management with multiple layers of protection
 const SOLANA_TRACKER_API_KEY = process.env.SOLANA_TRACKER_API_KEY || '2bd9911b-59a9-4db3-a45a-d243f9f7da80';
@@ -662,13 +662,11 @@ async function fetchSolanaTrackerData(tokenAddress) {
       'Cache-Control': 'no-cache'
     };
     
-    // Log API key status (masked for security) - with deployment verification
+    // Log API key status (masked for security)
     console.log('🔐 API Key Status:', SOLANA_TRACKER_API_KEY ? 
       `Present: ${SOLANA_TRACKER_API_KEY.slice(0, 8)}...${SOLANA_TRACKER_API_KEY.slice(-4)}` : 
       'Missing'
     );
-    console.log('🔐 Full API Key (for debugging):', SOLANA_TRACKER_API_KEY);
-    console.log('🔐 Deployment timestamp:', new Date().toISOString());
     
     // Enhanced API endpoints with timeouts and error handling
     const fetchWithTimeout = async (url, options, timeoutMs = 10000) => {
@@ -693,32 +691,17 @@ async function fetchSolanaTrackerData(tokenAddress) {
     console.log('🎯 Target Token:', tokenAddress);
     console.log('🔒 Security Headers:', Object.keys(secureHeaders));
     
-    // Start with the most likely working endpoints based on common API patterns
-    const priorityEndpoints = [
-      `https://data.solanatracker.io/api/v1/tokens/${tokenAddress}`,
-      `https://api.solanatracker.io/tokens/${tokenAddress}`, 
-      `https://data.solanatracker.io/api/v1/token/${tokenAddress}`,
-      `https://api.solanatracker.io/v1/tokens/${tokenAddress}`,
-      `https://solanatracker.io/api/tokens/${tokenAddress}`
+    // Use correct data.solanatracker.io endpoints to avoid rate limiting
+    const dataApiEndpoints = [
+      `${SOLANA_TRACKER_BASE}/tokens/${tokenAddress}`,
+      `${SOLANA_TRACKER_BASE}/tokens/${tokenAddress}/holders`, 
+      `${SOLANA_TRACKER_BASE}/tokens/${tokenAddress}/trades`
     ];
     
-    console.log('🎯 Testing priority endpoints first...');
-    const endpointPromises = priorityEndpoints.map(url => {
-      console.log(`🔗 Priority endpoint: ${url}`);
+    console.log('🎯 Using correct data API endpoints...');
+    const endpointPromises = dataApiEndpoints.map(url => {
+      console.log(`🔗 Data API endpoint: ${url}`);
       return fetchWithTimeout(url, { headers: secureHeaders });
-    });
-    
-    // Add holder and trader specific endpoints  
-    const detailEndpoints = [
-      `https://data.solanatracker.io/api/v1/tokens/${tokenAddress}/holders`,
-      `https://data.solanatracker.io/api/v1/tokens/${tokenAddress}/trades`,
-      `https://api.solanatracker.io/tokens/${tokenAddress}/holders`,
-      `https://api.solanatracker.io/tokens/${tokenAddress}/trades`
-    ];
-    
-    detailEndpoints.forEach(url => {
-      console.log(`🔗 Detail endpoint: ${url}`);
-      endpointPromises.push(fetchWithTimeout(url, { headers: secureHeaders }));
     });
     
     const responses = await Promise.allSettled(endpointPromises);
@@ -818,22 +801,10 @@ async function fetchSolanaTrackerData(tokenAddress) {
   }
 }
 
-// Helper function to categorize endpoint types  
+// Helper function to categorize endpoint types
 function getEndpointType(index) {
-  const patterns = [
-    'tokens/{token}', 'token/{token}', 'tokens/{token}/info', 'token/{token}/data',
-    'tokens/{token}/holders', 'tokens/{token}/trades', 'tokens/{token}/traders', 'tokens/{token}/performance'
-  ];
-  const patternIndex = index % patterns.length;
-  const baseIndex = Math.floor(index / patterns.length);
-  
-  const pattern = patterns[patternIndex] || 'unknown';
-  
-  if (pattern.includes('holders')) return 'holders';
-  if (pattern.includes('trades') || pattern.includes('traders') || pattern.includes('performance')) return 'traders';  
-  if (pattern.includes('info') || pattern.includes('data') || pattern === 'tokens/{token}' || pattern === 'token/{token}') return 'token';
-  
-  return 'unknown';
+  const types = ['token', 'holders', 'traders'];
+  return types[index] || 'unknown';
 }
 
 // Enhanced data quality assessment
