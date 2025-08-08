@@ -29,15 +29,32 @@ exports.handler = async (event, context) => {
       'Accept': 'application/json'
     };
     
-    // Test different endpoint variations
-    const endpoints = [
-      `${BASE_URL}/tokens/${testToken}`,
-      `${BASE_URL}/token/${testToken}`,
-      `${BASE_URL}/v1/tokens/${testToken}`,
-      `${BASE_URL}/api/tokens/${testToken}`,
-      `${BASE_URL}/tokens/${testToken}/holders`,
-      `${BASE_URL}/token/${testToken}/trades`
+    // Test comprehensive endpoint variations
+    const baseUrls = [
+      'https://api.solanatracker.io',
+      'https://data.solanatracker.io/api/v1',
+      'https://api.solanatracker.io/v1', 
+      'https://solanatracker.io/api',
+      'https://data.solanatracker.io'
     ];
+    
+    const patterns = [
+      '/tokens/{token}',
+      '/token/{token}',
+      '/tokens/{token}/info',
+      '/token/{token}/data',
+      '/tokens/{token}/holders', 
+      '/tokens/{token}/trades',
+      '/tokens/{token}/traders',
+      '/tokens/{token}/performance'
+    ];
+    
+    const endpoints = [];
+    for (const baseUrl of baseUrls) {
+      for (const pattern of patterns) {
+        endpoints.push(baseUrl + pattern.replace('{token}', testToken));
+      }
+    }
     
     const results = [];
     

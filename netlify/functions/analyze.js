@@ -64,7 +64,22 @@ exports.handler = async (event, context) => {
     let solanaTrackerData = null;
     if (blockchainInfo.blockchain === 'solana' && blockchainInfo.isContractAddress) {
       console.log('🔥 Detected Solana token, fetching trader performance data...');
+      console.log('🎯 Token Address for Solana Tracker:', tokenInput);
+      console.log('🌐 API Base URL:', SOLANA_TRACKER_BASE);
+      console.log('🔑 API Key (first 8 chars):', SOLANA_TRACKER_API_KEY.slice(0, 8));
+      
       solanaTrackerData = await fetchSolanaTrackerData(tokenInput);
+      
+      console.log('📊 Solana Tracker Result:', solanaTrackerData ? 'Data received' : 'No data returned');
+      if (solanaTrackerData) {
+        console.log('📈 Data structure:', {
+          hasTokenInfo: !!solanaTrackerData.tokenInfo,
+          hasHolders: !!(solanaTrackerData.holders && solanaTrackerData.holders.length > 0),
+          hasTopTraders: !!(solanaTrackerData.topTraders && solanaTrackerData.topTraders.length > 0),
+          hasFirstBuyers: !!(solanaTrackerData.firstBuyers && solanaTrackerData.firstBuyers.length > 0),
+          performanceCalculated: !!solanaTrackerData.performance
+        });
+      }
     }
     
     // Prepare comprehensive project data for JuliaOS agents
@@ -667,24 +682,35 @@ async function fetchSolanaTrackerData(tokenAddress) {
     console.log('🎯 Target Token:', tokenAddress);
     console.log('🔒 Security Headers:', Object.keys(secureHeaders));
     
-    // Parallel fetch with enhanced error handling and multiple endpoint attempts
-    const endpointPromises = [
-      // Primary token data endpoints
-      fetchWithTimeout(`${SOLANA_TRACKER_BASE}/tokens/${tokenAddress}`, { headers: secureHeaders }),
-      fetchWithTimeout(`${SOLANA_TRACKER_BASE}/token/${tokenAddress}`, { headers: secureHeaders }), // Alternative endpoint
-      
-      // Holder analysis endpoints  
-      fetchWithTimeout(`${SOLANA_TRACKER_BASE}/tokens/${tokenAddress}/holders`, { headers: secureHeaders }),
-      fetchWithTimeout(`${SOLANA_TRACKER_BASE}/token/${tokenAddress}/holders`, { headers: secureHeaders }), // Alternative
-      
-      // Trading performance endpoints
-      fetchWithTimeout(`${SOLANA_TRACKER_BASE}/tokens/${tokenAddress}/top-traders`, { headers: secureHeaders }),
-      fetchWithTimeout(`${SOLANA_TRACKER_BASE}/token/${tokenAddress}/trades`, { headers: secureHeaders }), // Alternative
-      
-      // First buyer analysis endpoints
-      fetchWithTimeout(`${SOLANA_TRACKER_BASE}/tokens/${tokenAddress}/first-buyers`, { headers: secureHeaders }),
-      fetchWithTimeout(`${SOLANA_TRACKER_BASE}/token/${tokenAddress}/early-buyers`, { headers: secureHeaders }) // Alternative
+    // Try multiple base URLs and endpoint patterns
+    const baseUrls = [
+      'https://api.solanatracker.io',
+      'https://data.solanatracker.io/api/v1',  
+      'https://api.solanatracker.io/v1',
+      'https://solanatracker.io/api'
     ];
+    
+    const endpointPatterns = [
+      '/tokens/{token}',
+      '/token/{token}', 
+      '/tokens/{token}/info',
+      '/token/{token}/data',
+      '/tokens/{token}/holders',
+      '/tokens/{token}/trades',
+      '/tokens/{token}/traders',
+      '/tokens/{token}/performance'
+    ];
+    
+    // Generate all possible endpoint combinations
+    const endpointPromises = [];
+    
+    for (const baseUrl of baseUrls) {
+      for (const pattern of endpointPatterns) {
+        const url = baseUrl + pattern.replace('{token}', tokenAddress);
+        endpointPromises.push(fetchWithTimeout(url, { headers: secureHeaders }));
+        console.log(`🔗 Queuing endpoint: ${url}`);
+      }
+    }
     
     const responses = await Promise.allSettled(endpointPromises);
     
@@ -783,10 +809,22 @@ async function fetchSolanaTrackerData(tokenAddress) {
   }
 }
 
-// Helper function to categorize endpoint types
+// Helper function to categorize endpoint types  
 function getEndpointType(index) {
-  const types = ['token', 'token-alt', 'holders', 'holders-alt', 'traders', 'traders-alt', 'buyers', 'buyers-alt'];
-  return types[index] || 'unknown';
+  const patterns = [
+    'tokens/{token}', 'token/{token}', 'tokens/{token}/info', 'token/{token}/data',
+    'tokens/{token}/holders', 'tokens/{token}/trades', 'tokens/{token}/traders', 'tokens/{token}/performance'
+  ];
+  const patternIndex = index % patterns.length;
+  const baseIndex = Math.floor(index / patterns.length);
+  
+  const pattern = patterns[patternIndex] || 'unknown';
+  
+  if (pattern.includes('holders')) return 'holders';
+  if (pattern.includes('trades') || pattern.includes('traders') || pattern.includes('performance')) return 'traders';  
+  if (pattern.includes('info') || pattern.includes('data') || pattern === 'tokens/{token}' || pattern === 'token/{token}') return 'token';
+  
+  return 'unknown';
 }
 
 // Enhanced data quality assessment
