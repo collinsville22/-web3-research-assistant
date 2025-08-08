@@ -60,6 +60,15 @@ exports.handler = async (event, context) => {
     const blockchainInfo = detectBlockchain(tokenInput, coinGeckoData, birdeyeData, dexData);
     const tokenInfo = resolveTokenInfo(tokenInput, coinGeckoData, birdeyeData, dexData, blockchainInfo);
     
+    console.log('🔍 Blockchain Detection Result:', {
+      blockchain: blockchainInfo.blockchain,
+      isContract: blockchainInfo.isContractAddress,
+      chainId: blockchainInfo.chainId,
+      addressFormat: blockchainInfo.addressFormat,
+      tokenInput: tokenInput,
+      willFetchSolanaData: blockchainInfo.blockchain === 'solana' && blockchainInfo.isContractAddress
+    });
+    
     // Fetch Solana Tracker data if it's a Solana token
     let solanaTrackerData = null;
     if (blockchainInfo.blockchain === 'solana' && blockchainInfo.isContractAddress) {
@@ -682,35 +691,33 @@ async function fetchSolanaTrackerData(tokenAddress) {
     console.log('🎯 Target Token:', tokenAddress);
     console.log('🔒 Security Headers:', Object.keys(secureHeaders));
     
-    // Try multiple base URLs and endpoint patterns
-    const baseUrls = [
-      'https://api.solanatracker.io',
-      'https://data.solanatracker.io/api/v1',  
-      'https://api.solanatracker.io/v1',
-      'https://solanatracker.io/api'
+    // Start with the most likely working endpoints based on common API patterns
+    const priorityEndpoints = [
+      `https://data.solanatracker.io/api/v1/tokens/${tokenAddress}`,
+      `https://api.solanatracker.io/tokens/${tokenAddress}`, 
+      `https://data.solanatracker.io/api/v1/token/${tokenAddress}`,
+      `https://api.solanatracker.io/v1/tokens/${tokenAddress}`,
+      `https://solanatracker.io/api/tokens/${tokenAddress}`
     ];
     
-    const endpointPatterns = [
-      '/tokens/{token}',
-      '/token/{token}', 
-      '/tokens/{token}/info',
-      '/token/{token}/data',
-      '/tokens/{token}/holders',
-      '/tokens/{token}/trades',
-      '/tokens/{token}/traders',
-      '/tokens/{token}/performance'
+    console.log('🎯 Testing priority endpoints first...');
+    const endpointPromises = priorityEndpoints.map(url => {
+      console.log(`🔗 Priority endpoint: ${url}`);
+      return fetchWithTimeout(url, { headers: secureHeaders });
+    });
+    
+    // Add holder and trader specific endpoints  
+    const detailEndpoints = [
+      `https://data.solanatracker.io/api/v1/tokens/${tokenAddress}/holders`,
+      `https://data.solanatracker.io/api/v1/tokens/${tokenAddress}/trades`,
+      `https://api.solanatracker.io/tokens/${tokenAddress}/holders`,
+      `https://api.solanatracker.io/tokens/${tokenAddress}/trades`
     ];
     
-    // Generate all possible endpoint combinations
-    const endpointPromises = [];
-    
-    for (const baseUrl of baseUrls) {
-      for (const pattern of endpointPatterns) {
-        const url = baseUrl + pattern.replace('{token}', tokenAddress);
-        endpointPromises.push(fetchWithTimeout(url, { headers: secureHeaders }));
-        console.log(`🔗 Queuing endpoint: ${url}`);
-      }
-    }
+    detailEndpoints.forEach(url => {
+      console.log(`🔗 Detail endpoint: ${url}`);
+      endpointPromises.push(fetchWithTimeout(url, { headers: secureHeaders }));
+    });
     
     const responses = await Promise.allSettled(endpointPromises);
     
