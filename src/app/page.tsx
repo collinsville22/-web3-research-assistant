@@ -83,6 +83,75 @@ interface AnalysisData {
   dexData?: object;
 }
 
+// Interface for incoming API response data (before sanitization)
+interface ApiResponseData {
+  tokenInfo?: {
+    name?: string;
+    symbol?: string;
+    address?: string;
+    description?: string;
+    blockchain?: string;
+    chainId?: string;
+    image?: string;
+    websites?: string[];
+    socialLinks?: {
+      twitter?: string;
+      telegram?: string;
+      discord?: string;
+    };
+  };
+  blockchainInfo?: {
+    blockchain?: string;
+    chainId?: string;
+    isContractAddress?: boolean;
+    addressFormat?: string;
+  };
+  analysis?: {
+    overallScore?: number;
+    recommendation?: string;
+    riskLevel?: string;
+    findings?: string[];
+    risks?: string[];
+    keyMetrics?: {
+      currentPrice?: number;
+      marketCap?: number;
+      volume24h?: number;
+      priceChange24h?: number;
+      circulatingSupply?: number;
+      totalSupply?: number;
+      maxSupply?: number;
+      liquidity?: number;
+      fdv?: number;
+      txns24h?: number;
+      ath?: number;
+      atl?: number;
+      athChangePercentage?: number;
+      volumeToMarketCapRatio?: number;
+      priceToAthRatio?: number;
+      liquidityRatio?: number;
+      communityScore?: number;
+      developerScore?: number;
+      publicInterestScore?: number;
+      marketCapRank?: number;
+      primaryDataSource?: string;
+      hasSolanaData?: boolean;
+      traderPerformance?: {
+        totalTraders?: number;
+        profitableTraders?: number;
+        losingTraders?: number;
+        averageProfit?: number;
+        averageLoss?: number;
+        topProfitAmount?: number;
+        topLossAmount?: number;
+        winRate?: number;
+        totalVolume?: number;
+      };
+    };
+  };
+  marketData?: object;
+  dexData?: object;
+}
+
 export default function Home() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
@@ -142,7 +211,7 @@ export default function Home() {
       if (result.success) {
         try {
           // Comprehensive data sanitization with multiple safety layers
-          const safeSanitizeData = (data: any) => {
+          const safeSanitizeData = (data: ApiResponseData): AnalysisData => {
             try {
               // Ensure all required top-level properties exist
               const safeData = {
