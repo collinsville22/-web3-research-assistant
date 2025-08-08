@@ -222,7 +222,7 @@ export default function Home() {
                   description: data?.tokenInfo?.description || '',
                   blockchain: data?.tokenInfo?.blockchain || 'unknown',
                   chainId: data?.tokenInfo?.chainId || 'unknown',
-                  image: data?.tokenInfo?.image || null,
+                  image: data?.tokenInfo?.image || undefined,
                   websites: Array.isArray(data?.tokenInfo?.websites) ? data.tokenInfo.websites : [],
                   socialLinks: {
                     twitter: data?.tokenInfo?.socialLinks?.twitter || '',
