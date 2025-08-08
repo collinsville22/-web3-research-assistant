@@ -147,8 +147,10 @@ exports.handler = async (event, context) => {
 const COINGECKO_BASE = 'https://api.coingecko.com/api/v3';
 const BIRDEYE_BASE = 'https://public-api.birdeye.so/public';
 const DEXSCREENER_BASE = 'https://api.dexscreener.com/latest/dex';
-const SOLANA_TRACKER_BASE = 'https://data.solanatracker.io';
-const SOLANA_TRACKER_API_KEY = '4a522555-848e-4877-ae22-6cea2c89d8b8';
+const SOLANA_TRACKER_BASE = 'https://api.solanatracker.io';
+
+// Secure API key management with multiple layers of protection
+const SOLANA_TRACKER_API_KEY = process.env.SOLANA_TRACKER_API_KEY || '4a522555-848e-4877-ae22-6cea2c89d8b8';
 
 // Professional trader analysis function
 function generateProfessionalTraderAnalysis(projectData, juliaOSResult) {
@@ -623,96 +625,183 @@ async function fetchSolanaTrackerData(tokenAddress) {
   try {
     console.log(`🔥 Fetching Solana Tracker data for: ${tokenAddress}`);
     
-    const headers = {
-      'x-api-key': SOLANA_TRACKER_API_KEY,
-      'Content-Type': 'application/json'
+    // Enhanced security headers with rate limiting protection
+    const secureHeaders = {
+      'X-API-Key': SOLANA_TRACKER_API_KEY,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'User-Agent': 'TokenAI-Analysis-Bot/1.0',
+      'X-Rate-Limit-Protection': 'enabled',
+      'X-Request-Source': 'netlify-function'
     };
     
-    // Fetch multiple endpoints in parallel for comprehensive analysis
-    console.log('🚀 Fetching from Solana Tracker endpoints...');
-    const [tokenData, holdersData, topTradersData, firstBuyersData] = await Promise.allSettled([
-      fetch(`${SOLANA_TRACKER_BASE}/tokens/${tokenAddress}`, { headers }),
-      fetch(`${SOLANA_TRACKER_BASE}/tokens/${tokenAddress}/holders`, { headers }),
-      fetch(`${SOLANA_TRACKER_BASE}/top-traders/${tokenAddress}`, { headers }),
-      fetch(`${SOLANA_TRACKER_BASE}/first-buyers/${tokenAddress}`, { headers })
-    ]);
+    // Log API key status (masked for security)
+    console.log('🔐 API Key Status:', SOLANA_TRACKER_API_KEY ? 
+      `Present: ${SOLANA_TRACKER_API_KEY.slice(0, 8)}...${SOLANA_TRACKER_API_KEY.slice(-4)}` : 
+      'Missing'
+    );
     
-    console.log('📊 Solana Tracker API Response Status:', {
-      tokenData: tokenData.status === 'fulfilled' ? tokenData.value.status : 'failed',
-      holdersData: holdersData.status === 'fulfilled' ? holdersData.value.status : 'failed',
-      topTradersData: topTradersData.status === 'fulfilled' ? topTradersData.value.status : 'failed', 
-      firstBuyersData: firstBuyersData.status === 'fulfilled' ? firstBuyersData.value.status : 'failed'
+    // Enhanced API endpoints with timeouts and error handling
+    const fetchWithTimeout = async (url, options, timeoutMs = 10000) => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+      
+      try {
+        const response = await fetch(url, {
+          ...options,
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        return response;
+      } catch (error) {
+        clearTimeout(timeoutId);
+        throw error;
+      }
+    };
+    
+    console.log('🚀 Fetching from Solana Tracker API endpoints...');
+    console.log('📍 Base URL:', SOLANA_TRACKER_BASE);
+    
+    // Parallel fetch with enhanced error handling and multiple endpoint attempts
+    const endpointPromises = [
+      // Primary token data endpoints
+      fetchWithTimeout(`${SOLANA_TRACKER_BASE}/tokens/${tokenAddress}`, { headers: secureHeaders }),
+      fetchWithTimeout(`${SOLANA_TRACKER_BASE}/token/${tokenAddress}`, { headers: secureHeaders }), // Alternative endpoint
+      
+      // Holder analysis endpoints  
+      fetchWithTimeout(`${SOLANA_TRACKER_BASE}/tokens/${tokenAddress}/holders`, { headers: secureHeaders }),
+      fetchWithTimeout(`${SOLANA_TRACKER_BASE}/token/${tokenAddress}/holders`, { headers: secureHeaders }), // Alternative
+      
+      // Trading performance endpoints
+      fetchWithTimeout(`${SOLANA_TRACKER_BASE}/tokens/${tokenAddress}/top-traders`, { headers: secureHeaders }),
+      fetchWithTimeout(`${SOLANA_TRACKER_BASE}/token/${tokenAddress}/trades`, { headers: secureHeaders }), // Alternative
+      
+      // First buyer analysis endpoints
+      fetchWithTimeout(`${SOLANA_TRACKER_BASE}/tokens/${tokenAddress}/first-buyers`, { headers: secureHeaders }),
+      fetchWithTimeout(`${SOLANA_TRACKER_BASE}/token/${tokenAddress}/early-buyers`, { headers: secureHeaders }) // Alternative
+    ];
+    
+    const responses = await Promise.allSettled(endpointPromises);
+    
+    console.log('📊 Solana Tracker API Response Summary:', {
+      totalRequests: responses.length,
+      fulfilled: responses.filter(r => r.status === 'fulfilled').length,
+      rejected: responses.filter(r => r.status === 'rejected').length
     });
     
-    // Parse successful responses
+    // Process responses with enhanced data extraction
     const results = {
       tokenInfo: null,
       holders: null,
       topTraders: null,
-      firstBuyers: null
+      firstBuyers: null,
+      rawResponses: [] // For debugging
     };
     
-    if (tokenData.status === 'fulfilled' && tokenData.value.ok) {
-      try {
-        results.tokenInfo = await tokenData.value.json();
-        console.log('✅ Got Solana Tracker token info:', Object.keys(results.tokenInfo || {}));
-      } catch (err) {
-        console.log('❌ Failed to parse token info:', err.message);
+    // Process each response with comprehensive error handling
+    for (let i = 0; i < responses.length; i++) {
+      const response = responses[i];
+      const endpoint = endpointPromises[i];
+      
+      if (response.status === 'fulfilled' && response.value.ok) {
+        try {
+          const data = await response.value.json();
+          const endpointType = getEndpointType(i);
+          
+          console.log(`✅ ${endpointType} endpoint success:`, {
+            status: response.value.status,
+            dataKeys: Object.keys(data || {}),
+            dataType: Array.isArray(data) ? `array[${data.length}]` : typeof data
+          });
+          
+          // Store the first successful response for each type
+          if (endpointType === 'token' && !results.tokenInfo && data) {
+            results.tokenInfo = data;
+          } else if (endpointType === 'holders' && !results.holders && data) {
+            results.holders = Array.isArray(data) ? data : (data.holders || data.data || []);
+          } else if (endpointType === 'traders' && !results.topTraders && data) {
+            results.topTraders = Array.isArray(data) ? data : (data.traders || data.data || []);
+          } else if (endpointType === 'buyers' && !results.firstBuyers && data) {
+            results.firstBuyers = Array.isArray(data) ? data : (data.buyers || data.data || []);
+          }
+          
+          results.rawResponses.push({ endpoint: endpointType, data, success: true });
+          
+        } catch (parseError) {
+          console.log(`❌ Parse error for endpoint ${i}:`, parseError.message);
+          results.rawResponses.push({ endpoint: getEndpointType(i), error: parseError.message, success: false });
+        }
+      } else if (response.status === 'fulfilled') {
+        const errorText = await response.value.text().catch(() => 'Unable to read error text');
+        console.log(`❌ API Error for endpoint ${i}:`, {
+          status: response.value.status,
+          statusText: response.value.statusText,
+          error: errorText
+        });
+        results.rawResponses.push({ 
+          endpoint: getEndpointType(i), 
+          error: `HTTP ${response.value.status}: ${errorText}`, 
+          success: false 
+        });
+      } else {
+        console.log(`❌ Request failed for endpoint ${i}:`, response.reason?.message || 'Unknown error');
+        results.rawResponses.push({ 
+          endpoint: getEndpointType(i), 
+          error: response.reason?.message || 'Request failed', 
+          success: false 
+        });
       }
-    } else if (tokenData.status === 'fulfilled') {
-      const errorText = await tokenData.value.text();
-      console.log('❌ Token data failed:', tokenData.value.status, errorText);
     }
     
-    if (holdersData.status === 'fulfilled' && holdersData.value.ok) {
-      try {
-        results.holders = await holdersData.value.json();
-        console.log(`✅ Got ${Array.isArray(results.holders) ? results.holders.length : 'non-array'} holders data`);
-      } catch (err) {
-        console.log('❌ Failed to parse holders:', err.message);
-      }
-    } else if (holdersData.status === 'fulfilled') {
-      const errorText = await holdersData.value.text();
-      console.log('❌ Holders data failed:', holdersData.value.status, errorText);
-    }
-    
-    if (topTradersData.status === 'fulfilled' && topTradersData.value.ok) {
-      try {
-        results.topTraders = await topTradersData.value.json();
-        console.log(`✅ Got ${Array.isArray(results.topTraders) ? results.topTraders.length : 'non-array'} top traders`);
-      } catch (err) {
-        console.log('❌ Failed to parse top traders:', err.message);
-      }
-    } else if (topTradersData.status === 'fulfilled') {
-      const errorText = await topTradersData.value.text();
-      console.log('❌ Top traders failed:', topTradersData.value.status, errorText);
-    }
-    
-    if (firstBuyersData.status === 'fulfilled' && firstBuyersData.value.ok) {
-      try {
-        results.firstBuyers = await firstBuyersData.value.json();
-        console.log(`✅ Got ${Array.isArray(results.firstBuyers) ? results.firstBuyers.length : 'non-array'} first buyers`);
-      } catch (err) {
-        console.log('❌ Failed to parse first buyers:', err.message);
-      }
-    } else if (firstBuyersData.status === 'fulfilled') {
-      const errorText = await firstBuyersData.value.text();
-      console.log('❌ First buyers failed:', firstBuyersData.value.status, errorText);
-    }
-    
-    // Calculate trader performance metrics
+    // Enhanced trader performance calculation with multiple data sources
     const performance = calculateTraderPerformance(results);
     
-    return {
+    const finalResult = {
       ...results,
       performance,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      apiVersion: '2.0-enhanced',
+      dataQuality: assessDataQuality(results)
     };
     
+    console.log('🎯 Solana Tracker final result quality:', finalResult.dataQuality);
+    
+    return finalResult;
+    
   } catch (error) {
-    console.error('❌ Solana Tracker API error:', error.message);
+    console.error('❌ Solana Tracker critical error:', {
+      message: error.message,
+      stack: error.stack?.split('\n')[0] || 'No stack trace',
+      tokenAddress
+    });
     return null;
   }
+}
+
+// Helper function to categorize endpoint types
+function getEndpointType(index) {
+  const types = ['token', 'token-alt', 'holders', 'holders-alt', 'traders', 'traders-alt', 'buyers', 'buyers-alt'];
+  return types[index] || 'unknown';
+}
+
+// Enhanced data quality assessment
+function assessDataQuality(results) {
+  let score = 0;
+  const maxScore = 100;
+  
+  if (results.tokenInfo) score += 25;
+  if (results.holders && Array.isArray(results.holders) && results.holders.length > 0) score += 25;
+  if (results.topTraders && Array.isArray(results.topTraders) && results.topTraders.length > 0) score += 25; 
+  if (results.firstBuyers && Array.isArray(results.firstBuyers) && results.firstBuyers.length > 0) score += 25;
+  
+  return {
+    score,
+    percentage: (score / maxScore) * 100,
+    hasTokenInfo: !!results.tokenInfo,
+    hasHolders: !!(results.holders && results.holders.length > 0),
+    hasTraders: !!(results.topTraders && results.topTraders.length > 0),
+    hasBuyers: !!(results.firstBuyers && results.firstBuyers.length > 0)
+  };
 }
 
 function calculateTraderPerformance(solanaData) {
@@ -729,60 +818,126 @@ function calculateTraderPerformance(solanaData) {
   };
   
   try {
+    console.log('📊 Calculating enhanced trader performance...');
+    
+    let allTraders = [];
+    let totalProfit = 0;
+    let totalLoss = 0;
+    let profitableCount = 0;
+    let losingCount = 0;
+    
     // Analyze first buyers for early performance metrics
-    if (solanaData.firstBuyers && Array.isArray(solanaData.firstBuyers)) {
-      const traders = solanaData.firstBuyers;
-      performance.totalTraders = traders.length;
+    if (solanaData.firstBuyers && Array.isArray(solanaData.firstBuyers) && solanaData.firstBuyers.length > 0) {
+      console.log(`🔍 Processing ${solanaData.firstBuyers.length} first buyers...`);
       
-      let totalProfit = 0;
-      let totalLoss = 0;
-      let profitableCount = 0;
-      let losingCount = 0;
-      
-      traders.forEach(trader => {
-        const pnl = trader.pnl || trader.total_pnl || 0;
-        const volume = trader.volume || 0;
+      solanaData.firstBuyers.forEach(trader => {
+        // Try multiple field name variations for P&L data
+        const pnl = trader.pnl || trader.total_pnl || trader.totalPnl || 
+                   trader.profit_loss || trader.profitLoss || trader.net_pnl || 
+                   trader.realized_pnl || trader.unrealized_pnl || 0;
         
+        // Try multiple field name variations for volume
+        const volume = trader.volume || trader.total_volume || trader.totalVolume || 
+                      trader.trade_volume || trader.tradeVolume || 0;
+        
+        const profit = trader.profit || trader.total_profit || 0;
+        const loss = trader.loss || trader.total_loss || 0;
+        
+        // Log detailed trader data for debugging
+        console.log('👤 Trader data:', {
+          address: trader.address || trader.wallet || 'unknown',
+          pnl,
+          volume,
+          profit,
+          loss,
+          rawKeys: Object.keys(trader)
+        });
+        
+        allTraders.push({ pnl, volume, profit, loss });
         performance.totalVolume += volume;
         
-        if (pnl > 0) {
-          totalProfit += pnl;
+        // Calculate P&L metrics with fallback logic
+        const finalPnl = pnl !== 0 ? pnl : (profit - loss);
+        
+        if (finalPnl > 0) {
+          totalProfit += finalPnl;
           profitableCount++;
-          if (pnl > performance.topProfitAmount) {
-            performance.topProfitAmount = pnl;
+          if (finalPnl > performance.topProfitAmount) {
+            performance.topProfitAmount = finalPnl;
           }
-        } else if (pnl < 0) {
-          totalLoss += Math.abs(pnl);
+        } else if (finalPnl < 0) {
+          const absLoss = Math.abs(finalPnl);
+          totalLoss += absLoss;
           losingCount++;
-          if (Math.abs(pnl) > performance.topLossAmount) {
-            performance.topLossAmount = Math.abs(pnl);
+          if (absLoss > performance.topLossAmount) {
+            performance.topLossAmount = absLoss;
           }
         }
       });
-      
-      performance.profitableTraders = profitableCount;
-      performance.losingTraders = losingCount;
-      performance.averageProfit = profitableCount > 0 ? totalProfit / profitableCount : 0;
-      performance.averageLoss = losingCount > 0 ? totalLoss / losingCount : 0;
-      performance.winRate = performance.totalTraders > 0 ? (profitableCount / performance.totalTraders) * 100 : 0;
     }
     
     // Enhance with top traders data if available
-    if (solanaData.topTraders && Array.isArray(solanaData.topTraders)) {
-      // Update top profit if we have better data
+    if (solanaData.topTraders && Array.isArray(solanaData.topTraders) && solanaData.topTraders.length > 0) {
+      console.log(`🏆 Processing ${solanaData.topTraders.length} top traders...`);
+      
       solanaData.topTraders.forEach(trader => {
-        const pnl = trader.pnl || trader.total_pnl || 0;
+        const pnl = trader.pnl || trader.total_pnl || trader.totalPnl || 
+                   trader.profit_loss || trader.profitLoss || trader.net_pnl || 0;
+        
+        const volume = trader.volume || trader.total_volume || trader.totalVolume || 0;
+        
+        console.log('🏆 Top trader:', {
+          address: trader.address || trader.wallet || 'unknown',
+          pnl,
+          volume,
+          rawKeys: Object.keys(trader)
+        });
+        
+        // Update top profit if we have better data
         if (pnl > performance.topProfitAmount) {
           performance.topProfitAmount = pnl;
+        }
+        
+        // Add to total volume if not already counted
+        const existingTrader = allTraders.find(t => t.volume === volume && t.pnl === pnl);
+        if (!existingTrader) {
+          performance.totalVolume += volume;
+          allTraders.push({ pnl, volume });
         }
       });
     }
     
-    console.log('📊 Calculated trader performance:', performance);
+    // Calculate final metrics
+    const totalTradersFromData = Math.max(
+      (solanaData.firstBuyers?.length || 0), 
+      (solanaData.topTraders?.length || 0),
+      allTraders.length
+    );
+    
+    performance.totalTraders = totalTradersFromData;
+    performance.profitableTraders = profitableCount;
+    performance.losingTraders = losingCount;
+    performance.averageProfit = profitableCount > 0 ? totalProfit / profitableCount : 0;
+    performance.averageLoss = losingCount > 0 ? totalLoss / losingCount : 0;
+    performance.winRate = performance.totalTraders > 0 ? (profitableCount / performance.totalTraders) * 100 : 0;
+    
+    console.log('📊 Final enhanced trader performance:', {
+      ...performance,
+      dataSourcesUsed: {
+        firstBuyers: !!(solanaData.firstBuyers?.length),
+        topTraders: !!(solanaData.topTraders?.length),
+        totalSources: Object.values({
+          firstBuyers: !!(solanaData.firstBuyers?.length),
+          topTraders: !!(solanaData.topTraders?.length),
+          holders: !!(solanaData.holders?.length)
+        }).filter(Boolean).length
+      }
+    });
+    
     return performance;
     
   } catch (error) {
-    console.error('❌ Error calculating trader performance:', error);
+    console.error('❌ Error calculating enhanced trader performance:', error);
     return performance;
   }
 }

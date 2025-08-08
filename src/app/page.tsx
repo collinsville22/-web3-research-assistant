@@ -157,26 +157,6 @@ export default function Home() {
     }
   };
 
-  const testEndpoint = async () => {
-    try {
-      const testData = { test: true, timestamp: Date.now() };
-      console.log('🧪 Testing endpoint...');
-      
-      const response = await fetch(`/.netlify/functions/test?test=${Date.now()}`, {
-        method: 'POST',
-        cache: 'no-store',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(testData)
-      });
-      
-      const result = await response.json();
-      console.log('🧪 Test result:', result);
-      alert(`Test successful! Server time: ${result.serverTime}, Random ID: ${result.randomId}`);
-    } catch (err) {
-      console.error('🧪 Test failed:', err);
-      alert('Test failed - check console');
-    }
-  };
 
   return (
     <main className="min-h-screen bg-black text-white overflow-hidden relative">
@@ -211,13 +191,6 @@ export default function Home() {
           <a href="#" className="hover:text-gray-300 transition-colors">Features</a>
           <a href="#" className="hover:text-gray-300 transition-colors">API</a>
           <a href="#" className="hover:text-gray-300 transition-colors">Docs</a>
-          <button 
-            onClick={testEndpoint}
-            className="text-xs bg-red-600 hover:bg-red-700 px-2 py-1 rounded transition-colors"
-            title="Test cache busting"
-          >
-            🧪 Test
-          </button>
         </div>
       </nav>
 
