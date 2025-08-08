@@ -88,7 +88,7 @@ export default function Home() {
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
-  const [debugMode, setDebugMode] = useState(false);
+  // const [debugMode, setDebugMode] = useState(false); // Removed unused debug mode
 
   const handleAnalyze = async (tokenInput: string) => {
     setIsAnalyzing(true);
@@ -142,7 +142,7 @@ export default function Home() {
       if (result.success) {
         try {
           // Comprehensive data sanitization with multiple safety layers
-          const safeSanitizeData = (data) => {
+          const safeSanitizeData = (data: any) => {
             try {
               // Ensure all required top-level properties exist
               const safeData = {

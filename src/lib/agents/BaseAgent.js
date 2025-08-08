@@ -161,7 +161,7 @@ export class BaseAgent {
     };
   }
 
-  fallbackStrategy(_data) {
+  fallbackStrategy(data) {
     return {
       result: `Fallback strategy executed for ${this.agentType}`,
       recommendations: ['Consider upgrading to JuliaOS for enhanced analysis'],
