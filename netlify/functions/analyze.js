@@ -662,11 +662,13 @@ async function fetchSolanaTrackerData(tokenAddress) {
       'Cache-Control': 'no-cache'
     };
     
-    // Log API key status (masked for security)
+    // Log API key status (masked for security) - with deployment verification
     console.log('🔐 API Key Status:', SOLANA_TRACKER_API_KEY ? 
       `Present: ${SOLANA_TRACKER_API_KEY.slice(0, 8)}...${SOLANA_TRACKER_API_KEY.slice(-4)}` : 
       'Missing'
     );
+    console.log('🔐 Full API Key (for debugging):', SOLANA_TRACKER_API_KEY);
+    console.log('🔐 Deployment timestamp:', new Date().toISOString());
     
     // Enhanced API endpoints with timeouts and error handling
     const fetchWithTimeout = async (url, options, timeoutMs = 10000) => {
