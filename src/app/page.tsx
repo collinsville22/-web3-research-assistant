@@ -87,15 +87,25 @@ export default function Home() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
   const [error, setError] = useState('');
+  const [copied, setCopied] = useState(false);
 
   const handleAnalyze = async (tokenInput: string) => {
     setIsAnalyzing(true);
     setError('');
+    setAnalysisData(null); // Clear previous results
+    
     try {
       const response = await fetch('/.netlify/functions/analyze', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tokenInput })
+        headers: { 
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        },
+        body: JSON.stringify({ 
+          tokenInput,
+          timestamp: new Date().getTime() // Prevent caching
+        })
       });
       
       const result = await response.json();
@@ -195,11 +205,21 @@ export default function Home() {
                       <span>Rank #{analysisData.analysis.keyMetrics.marketCapRank}</span>
                     )}
                     <button 
-                      onClick={() => navigator.clipboard.writeText(analysisData.tokenInfo.address)}
-                      className="font-mono text-xs bg-gray-800 hover:bg-gray-700 px-2 py-1 rounded transition-colors cursor-pointer"
-                      title="Click to copy address"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(analysisData.tokenInfo.address);
+                          setCopied(true);
+                          setTimeout(() => setCopied(false), 2000);
+                        } catch (err) {
+                          console.error('Failed to copy:', err);
+                        }
+                      }}
+                      className={`font-mono text-xs px-2 py-1 rounded transition-colors cursor-pointer ${
+                        copied ? 'bg-green-700 text-green-100' : 'bg-gray-800 hover:bg-gray-700'
+                      }`}
+                      title="Click to copy full address"
                     >
-                      {analysisData.tokenInfo.address.slice(0, 8)}...{analysisData.tokenInfo.address.slice(-6)}
+                      {copied ? '✓ Copied!' : `${analysisData.tokenInfo.address.slice(0, 8)}...${analysisData.tokenInfo.address.slice(-6)}`}
                     </button>
                   </div>
                 </div>
@@ -578,8 +598,9 @@ export default function Home() {
           {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
             <div className="text-center">
-              <div className="text-3xl font-bold mb-2">3</div>
+              <div className="text-3xl font-bold mb-2">4</div>
               <div className="text-gray-400 text-sm uppercase tracking-wider">API Sources</div>
+              <div className="text-xs text-gray-500 mt-1">+ Solana Tracker for SOL tokens</div>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold mb-2">Real-time</div>

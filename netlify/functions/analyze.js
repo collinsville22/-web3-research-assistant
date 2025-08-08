@@ -73,18 +73,23 @@ exports.handler = async (event, context) => {
     
     console.log(`✅ JuliaOS swarm analysis complete: ${analysisResult.consensus_score}/100`);
     
+    // Generate professional trader analysis
+    const professionalAnalysis = generateProfessionalTraderAnalysis(projectData, analysisResult);
+    
     // Format result to maintain compatibility with frontend
     const result = {
       tokenInfo: projectData.tokenInfo,
+      blockchainInfo: projectData.blockchainInfo,
       marketData: projectData.marketData,
       dexData: projectData.dexData,
+      solanaTrackerData: projectData.solanaTrackerData,
       analysis: {
-        overallScore: analysisResult.consensus_score,
-        recommendation: analysisResult.overall_recommendation,
-        riskLevel: analysisResult.detailed_analysis?.contract?.risk_level || 'MEDIUM',
+        overallScore: professionalAnalysis.overallScore,
+        recommendation: professionalAnalysis.recommendation,
+        riskLevel: professionalAnalysis.riskLevel,
         keyMetrics: projectData.analysis.keyMetrics,
-        findings: analysisResult.key_findings || [],
-        risks: analysisResult.risk_factors || []
+        findings: professionalAnalysis.findings,
+        risks: professionalAnalysis.risks
       }
     };
     
@@ -120,6 +125,151 @@ const BIRDEYE_BASE = 'https://public-api.birdeye.so/public';
 const DEXSCREENER_BASE = 'https://api.dexscreener.com/latest/dex';
 const SOLANA_TRACKER_BASE = 'https://data.solanatracker.io';
 const SOLANA_TRACKER_API_KEY = '4a522555-848e-4877-ae22-6cea2c89d8b8';
+
+// Professional trader analysis function
+function generateProfessionalTraderAnalysis(projectData, juliaOSResult) {
+  const { tokenInfo, analysis, solanaTrackerData, blockchainInfo } = projectData;
+  const metrics = analysis.keyMetrics;
+  
+  console.log('💼 Generating professional trader analysis...');
+  
+  let score = 0;
+  const findings = [];
+  const risks = [];
+  
+  // LIQUIDITY ANALYSIS (25 points)
+  const liquidity = metrics.liquidity || 0;
+  if (liquidity > 1000000) { // >$1M
+    score += 25;
+    findings.push(`Excellent liquidity pool of $${(liquidity/1000000).toFixed(1)}M - Low slippage risk for large trades`);
+  } else if (liquidity > 500000) {
+    score += 15;
+    findings.push(`Decent liquidity at $${(liquidity/1000).toFixed(0)}K - Moderate slippage on large trades`);
+  } else if (liquidity > 100000) {
+    score += 8;
+    risks.push(`Low liquidity of $${(liquidity/1000).toFixed(0)}K - Expect significant slippage above $10K trades`);
+  } else {
+    risks.push(`Critical liquidity warning: Only $${liquidity.toLocaleString()} - High risk of price manipulation`);
+  }
+  
+  // VOLUME ANALYSIS (20 points)
+  const volume24h = metrics.volume24h || 0;
+  const volumeToMCap = metrics.volumeToMarketCapRatio || 0;
+  if (volumeToMCap > 0.1) { // >10% volume/mcap ratio
+    score += 20;
+    findings.push(`Strong trading activity: ${(volumeToMCap*100).toFixed(1)}% volume/mcap ratio indicates healthy price discovery`);
+  } else if (volumeToMCap > 0.05) {
+    score += 12;
+    findings.push(`Moderate trading activity: ${(volumeToMCap*100).toFixed(1)}% volume/mcap ratio`);
+  } else if (volume24h < 10000) {
+    risks.push(`Dead volume warning: $${volume24h.toLocaleString()} 24h volume indicates low interest`);
+  }
+  
+  // PRICE ACTION ANALYSIS (15 points)
+  const priceChange24h = metrics.priceChange24h || 0;
+  const athRatio = metrics.priceToAthRatio || 0;
+  if (Math.abs(priceChange24h) < 5 && volume24h > 100000) {
+    score += 15;
+    findings.push('Stable price action with healthy volume - Good risk/reward setup');
+  } else if (priceChange24h > 20) {
+    risks.push(`Extreme pump: +${priceChange24h.toFixed(1)}% in 24h - High dump risk, consider taking profits`);
+  } else if (priceChange24h < -20) {
+    findings.push(`Major dip: ${priceChange24h.toFixed(1)}% in 24h - Potential buy opportunity if fundamentals strong`);
+  }
+  
+  if (athRatio > 0.8) {
+    risks.push(`Near ATH territory: ${(athRatio*100).toFixed(1)}% of ATH - Limited upside, high downside risk`);
+  } else if (athRatio < 0.1) {
+    findings.push(`Deep discount: ${(athRatio*100).toFixed(1)}% of ATH - High upside potential if token recovers`);
+  }
+  
+  // MARKET CAP ANALYSIS (10 points)
+  const marketCap = metrics.marketCap || 0;
+  if (marketCap > 100000000) { // >$100M
+    score += 8;
+    findings.push(`Large cap token at $${(marketCap/1000000).toFixed(0)}M - Lower risk but limited upside potential`);
+  } else if (marketCap > 10000000) { // >$10M
+    score += 10;
+    findings.push(`Mid cap at $${(marketCap/1000000).toFixed(1)}M - Balanced risk/reward profile`);
+  } else if (marketCap > 1000000) { // >$1M
+    score += 6;
+    findings.push(`Small cap at $${(marketCap/1000000).toFixed(1)}M - High risk, high reward potential`);
+  } else {
+    risks.push(`Micro cap warning: $${marketCap.toLocaleString()} - Extremely high risk, possible rugpull`);
+  }
+  
+  // SOLANA TRADER PERFORMANCE ANALYSIS (20 points) - Only for Solana tokens
+  if (solanaTrackerData?.performance && blockchainInfo.blockchain === 'solana') {
+    const perf = solanaTrackerData.performance;
+    
+    if (perf.winRate > 60) {
+      score += 20;
+      findings.push(`Exceptional trader performance: ${perf.winRate.toFixed(1)}% win rate with ${perf.totalTraders} tracked traders`);
+      findings.push(`Top performer made $${perf.topProfitAmount.toLocaleString()} - Smart money is accumulating`);
+    } else if (perf.winRate > 40) {
+      score += 12;
+      findings.push(`Decent trader performance: ${perf.winRate.toFixed(1)}% win rate - Mixed signals from traders`);
+    } else if (perf.winRate < 30) {
+      risks.push(`Poor trader performance: ${perf.winRate.toFixed(1)}% win rate - Most traders losing money`);
+      risks.push(`Biggest loss: $${perf.topLossAmount.toLocaleString()} - High risk of further losses`);
+    }
+    
+    if (perf.totalTraders < 10) {
+      risks.push(`Low trader sample: Only ${perf.totalTraders} tracked traders - Data may not be representative`);
+    }
+  } else if (blockchainInfo.blockchain === 'solana') {
+    risks.push('No Solana trader performance data available - Cannot assess smart money behavior');
+  }
+  
+  // TRANSACTION ACTIVITY (10 points)
+  const txns24h = metrics.txns24h || 0;
+  if (txns24h > 1000) {
+    score += 10;
+    findings.push(`High transaction count: ${txns24h.toLocaleString()} trades in 24h - Strong community engagement`);
+  } else if (txns24h > 100) {
+    score += 6;
+    findings.push(`Moderate activity: ${txns24h.toLocaleString()} trades in 24h`);
+  } else if (txns24h < 50) {
+    risks.push(`Low activity warning: Only ${txns24h} trades in 24h - Poor liquidity and interest`);
+  }
+  
+  // FINAL SCORING AND RECOMMENDATION
+  score = Math.min(score, 100);
+  let recommendation = '';
+  let riskLevel = '';
+  
+  if (score >= 80) {
+    recommendation = 'STRONG BUY';
+    riskLevel = 'LOW';
+    findings.push('All key metrics align - High probability trade setup');
+  } else if (score >= 65) {
+    recommendation = 'BUY';
+    riskLevel = 'MEDIUM';
+    findings.push('Solid fundamentals with manageable risks - Good entry opportunity');
+  } else if (score >= 45) {
+    recommendation = 'HOLD/WATCH';
+    riskLevel = 'MEDIUM-HIGH';
+    findings.push('Mixed signals - Wait for better entry or stronger confirmation');
+  } else if (score >= 25) {
+    recommendation = 'AVOID';
+    riskLevel = 'HIGH';
+    risks.push('Multiple red flags present - High probability of loss');
+  } else {
+    recommendation = 'DANGER - DO NOT TRADE';
+    riskLevel = 'EXTREME';
+    risks.push('Critical risk factors detected - Likely scam or dead project');
+  }
+  
+  console.log('💼 Professional analysis complete:', { score, recommendation, riskLevel });
+  
+  return {
+    overallScore: score,
+    recommendation,
+    riskLevel,
+    findings,
+    risks
+  };
+}
 
 // Blockchain detection and comprehensive data extraction functions
 function detectBlockchain(tokenInput, coinGeckoData, birdeyeData, dexData) {
@@ -455,12 +605,20 @@ async function fetchSolanaTrackerData(tokenAddress) {
     };
     
     // Fetch multiple endpoints in parallel for comprehensive analysis
+    console.log('🚀 Fetching from Solana Tracker endpoints...');
     const [tokenData, holdersData, topTradersData, firstBuyersData] = await Promise.allSettled([
       fetch(`${SOLANA_TRACKER_BASE}/tokens/${tokenAddress}`, { headers }),
       fetch(`${SOLANA_TRACKER_BASE}/tokens/${tokenAddress}/holders`, { headers }),
       fetch(`${SOLANA_TRACKER_BASE}/top-traders/${tokenAddress}`, { headers }),
       fetch(`${SOLANA_TRACKER_BASE}/first-buyers/${tokenAddress}`, { headers })
     ]);
+    
+    console.log('📊 Solana Tracker API Response Status:', {
+      tokenData: tokenData.status === 'fulfilled' ? tokenData.value.status : 'failed',
+      holdersData: holdersData.status === 'fulfilled' ? holdersData.value.status : 'failed',
+      topTradersData: topTradersData.status === 'fulfilled' ? topTradersData.value.status : 'failed', 
+      firstBuyersData: firstBuyersData.status === 'fulfilled' ? firstBuyersData.value.status : 'failed'
+    });
     
     // Parse successful responses
     const results = {
@@ -471,23 +629,51 @@ async function fetchSolanaTrackerData(tokenAddress) {
     };
     
     if (tokenData.status === 'fulfilled' && tokenData.value.ok) {
-      results.tokenInfo = await tokenData.value.json();
-      console.log('✅ Got Solana Tracker token info');
+      try {
+        results.tokenInfo = await tokenData.value.json();
+        console.log('✅ Got Solana Tracker token info:', Object.keys(results.tokenInfo || {}));
+      } catch (err) {
+        console.log('❌ Failed to parse token info:', err.message);
+      }
+    } else if (tokenData.status === 'fulfilled') {
+      const errorText = await tokenData.value.text();
+      console.log('❌ Token data failed:', tokenData.value.status, errorText);
     }
     
     if (holdersData.status === 'fulfilled' && holdersData.value.ok) {
-      results.holders = await holdersData.value.json();
-      console.log(`✅ Got ${results.holders?.length || 0} holders data`);
+      try {
+        results.holders = await holdersData.value.json();
+        console.log(`✅ Got ${Array.isArray(results.holders) ? results.holders.length : 'non-array'} holders data`);
+      } catch (err) {
+        console.log('❌ Failed to parse holders:', err.message);
+      }
+    } else if (holdersData.status === 'fulfilled') {
+      const errorText = await holdersData.value.text();
+      console.log('❌ Holders data failed:', holdersData.value.status, errorText);
     }
     
     if (topTradersData.status === 'fulfilled' && topTradersData.value.ok) {
-      results.topTraders = await topTradersData.value.json();
-      console.log(`✅ Got ${results.topTraders?.length || 0} top traders`);
+      try {
+        results.topTraders = await topTradersData.value.json();
+        console.log(`✅ Got ${Array.isArray(results.topTraders) ? results.topTraders.length : 'non-array'} top traders`);
+      } catch (err) {
+        console.log('❌ Failed to parse top traders:', err.message);
+      }
+    } else if (topTradersData.status === 'fulfilled') {
+      const errorText = await topTradersData.value.text();
+      console.log('❌ Top traders failed:', topTradersData.value.status, errorText);
     }
     
     if (firstBuyersData.status === 'fulfilled' && firstBuyersData.value.ok) {
-      results.firstBuyers = await firstBuyersData.value.json();
-      console.log(`✅ Got ${results.firstBuyers?.length || 0} first buyers`);
+      try {
+        results.firstBuyers = await firstBuyersData.value.json();
+        console.log(`✅ Got ${Array.isArray(results.firstBuyers) ? results.firstBuyers.length : 'non-array'} first buyers`);
+      } catch (err) {
+        console.log('❌ Failed to parse first buyers:', err.message);
+      }
+    } else if (firstBuyersData.status === 'fulfilled') {
+      const errorText = await firstBuyersData.value.text();
+      console.log('❌ First buyers failed:', firstBuyersData.value.status, errorText);
     }
     
     // Calculate trader performance metrics
