@@ -9,6 +9,10 @@
 [functions]
   directory = "netlify/functions"
 
+[functions."analyze"]
+  # Disable caching for the analyze function
+  cache-control = "no-cache, no-store, must-revalidate"
+
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"

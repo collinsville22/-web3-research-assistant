@@ -93,18 +93,25 @@ export default function Home() {
     setIsAnalyzing(true);
     setError('');
     setAnalysisData(null); // Clear previous results
+    setCopied(false); // Reset copy state
+    
+    // Generate unique request ID to force fresh analysis
+    const requestId = `${tokenInput.toLowerCase()}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
     try {
-      const response = await fetch('/.netlify/functions/analyze', {
+      const response = await fetch(`/.netlify/functions/analyze?nocache=${Date.now()}`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
+          'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         },
         body: JSON.stringify({ 
-          tokenInput,
-          timestamp: new Date().getTime() // Prevent caching
+          tokenInput: tokenInput.trim(),
+          requestId,
+          forceRefresh: true,
+          timestamp: new Date().getTime()
         })
       });
       
@@ -204,23 +211,30 @@ export default function Home() {
                     {analysisData.analysis.keyMetrics.marketCapRank > 0 && (
                       <span>Rank #{analysisData.analysis.keyMetrics.marketCapRank}</span>
                     )}
-                    <button 
-                      onClick={async () => {
-                        try {
-                          await navigator.clipboard.writeText(analysisData.tokenInfo.address);
-                          setCopied(true);
-                          setTimeout(() => setCopied(false), 2000);
-                        } catch (err) {
-                          console.error('Failed to copy:', err);
-                        }
-                      }}
-                      className={`font-mono text-xs px-2 py-1 rounded transition-colors cursor-pointer ${
-                        copied ? 'bg-green-700 text-green-100' : 'bg-gray-800 hover:bg-gray-700'
-                      }`}
-                      title="Click to copy full address"
-                    >
-                      {copied ? '✓ Copied!' : `${analysisData.tokenInfo.address.slice(0, 8)}...${analysisData.tokenInfo.address.slice(-6)}`}
-                    </button>
+                    <div className="flex items-center space-x-2">
+                      <button 
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(analysisData.tokenInfo.address);
+                            setCopied(true);
+                            setTimeout(() => setCopied(false), 2000);
+                          } catch (err) {
+                            console.error('Failed to copy:', err);
+                          }
+                        }}
+                        className={`font-mono text-xs px-2 py-1 rounded transition-colors cursor-pointer flex items-center space-x-1 ${
+                          copied ? 'bg-green-700 text-green-100' : 'bg-gray-800 hover:bg-gray-700'
+                        }`}
+                        title="Click to copy full address"
+                      >
+                        <span>{copied ? '✓ Copied!' : `${analysisData.tokenInfo.address.slice(0, 8)}...${analysisData.tokenInfo.address.slice(-6)}`}</span>
+                        {!copied && (
+                          <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

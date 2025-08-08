@@ -6,7 +6,10 @@ exports.handler = async (event, context) => {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, Authorization',
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+    'Pragma': 'no-cache',
+    'Expires': '0'
   };
 
   if (event.httpMethod === 'OPTIONS') {
@@ -22,7 +25,16 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    const { tokenInput } = JSON.parse(event.body);
+    const requestBody = JSON.parse(event.body);
+    const { tokenInput, requestId, forceRefresh } = requestBody;
+    
+    console.log(`🚀 NEW ANALYSIS REQUEST:`, {
+      tokenInput,
+      requestId,
+      forceRefresh,
+      timestamp: new Date().toISOString(),
+      headers: event.headers['cache-control'] || 'none'
+    });
     
     if (!tokenInput) {
       return {
@@ -32,7 +44,7 @@ exports.handler = async (event, context) => {
       };
     }
     
-    console.log(`🤖 Starting JuliaOS swarm analysis for: ${tokenInput}`);
+    console.log(`🤖 Starting JuliaOS swarm analysis for: ${tokenInput} [ID: ${requestId}]`);
     
     // Fetch data from all APIs in parallel
     const [coinGeckoData, birdeyeData, dexData] = await Promise.all([
@@ -75,6 +87,12 @@ exports.handler = async (event, context) => {
     
     // Generate professional trader analysis
     const professionalAnalysis = generateProfessionalTraderAnalysis(projectData, analysisResult);
+    console.log(`💼 Professional analysis generated:`, {
+      score: professionalAnalysis.overallScore,
+      recommendation: professionalAnalysis.recommendation,
+      findingsCount: professionalAnalysis.findings.length,
+      risksCount: professionalAnalysis.risks.length
+    });
     
     // Format result to maintain compatibility with frontend
     const result = {
@@ -99,9 +117,12 @@ exports.handler = async (event, context) => {
       body: JSON.stringify({
         success: true,
         data: result,
+        requestId: requestId,
         juliaos_analysis: analysisResult, // Full JuliaOS analysis
         timestamp: new Date().toISOString(),
-        sources: ['CoinGecko', 'Birdeye', 'DexScreener', 'JuliaOS Framework']
+        sources: result.solanaTrackerData ? 
+          ['CoinGecko', 'Birdeye', 'DexScreener', 'Solana Tracker', 'JuliaOS Framework'] :
+          ['CoinGecko', 'Birdeye', 'DexScreener', 'JuliaOS Framework']
       })
     };
     
