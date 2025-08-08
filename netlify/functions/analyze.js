@@ -764,62 +764,69 @@ async function fetchSolanaTrackerData(tokenAddress) {
             console.log('📊 Token data structure:', {
               hasBuys: !!data.buys,
               buysType: typeof data.buys,
-              buysLength: Array.isArray(data.buys) ? data.buys.length : 'not array',
-              buysKeys: data.buys ? Object.keys(data.buys).slice(0, 5) : 'no buys',
+              buysValue: data.buys,
               hasSells: !!data.sells, 
               sellsType: typeof data.sells,
-              sellsLength: Array.isArray(data.sells) ? data.sells.length : 'not array',
-              sellsKeys: data.sells ? Object.keys(data.sells).slice(0, 5) : 'no sells',
+              sellsValue: data.sells,
               hasEvents: !!data.events,
               eventsType: typeof data.events,
-              eventsLength: Array.isArray(data.events) ? data.events.length : 'not array'
+              eventsLength: Array.isArray(data.events) ? data.events.length : 'not array',
+              eventsKeys: data.events && typeof data.events === 'object' ? Object.keys(data.events).slice(0, 10) : 'no events keys'
             });
             
-            // Handle different data structures
+            // Handle different data structures - focus on events since buys/sells are just numbers
             const allTrades = [];
             
-            // Extract from buys data
-            if (data.buys) {
-              if (Array.isArray(data.buys)) {
-                allTrades.push(...data.buys.map(trade => ({ ...trade, type: 'buy' })));
-              } else if (typeof data.buys === 'object') {
-                // If buys is an object, try to extract values or nested arrays
-                const buysValues = Object.values(data.buys);
-                buysValues.forEach(value => {
-                  if (Array.isArray(value)) {
-                    allTrades.push(...value.map(trade => ({ ...trade, type: 'buy' })));
-                  }
-                });
-              }
-            }
-            
-            // Extract from sells data
-            if (data.sells) {
-              if (Array.isArray(data.sells)) {
-                allTrades.push(...data.sells.map(trade => ({ ...trade, type: 'sell' })));
-              } else if (typeof data.sells === 'object') {
-                // If sells is an object, try to extract values or nested arrays
-                const sellsValues = Object.values(data.sells);
-                sellsValues.forEach(value => {
-                  if (Array.isArray(value)) {
-                    allTrades.push(...value.map(trade => ({ ...trade, type: 'sell' })));
-                  }
-                });
-              }
-            }
-            
-            // Extract from events if no trade data found
-            if (allTrades.length === 0 && data.events) {
+            // Primary extraction from events object (most likely location of trade data)
+            if (data.events && typeof data.events === 'object') {
+              console.log('🔍 Examining events object for trade data...');
+              
+              // Check if events is directly an array
               if (Array.isArray(data.events)) {
+                console.log(`📊 Events is array with ${data.events.length} items`);
                 allTrades.push(...data.events);
-              } else if (typeof data.events === 'object') {
-                const eventsValues = Object.values(data.events);
-                eventsValues.forEach(value => {
-                  if (Array.isArray(value)) {
-                    allTrades.push(...value);
+              } else {
+                // Events is an object, check its properties
+                const eventKeys = Object.keys(data.events);
+                console.log('📊 Events object keys:', eventKeys);
+                
+                eventKeys.forEach(key => {
+                  const eventValue = data.events[key];
+                  console.log(`🔍 Processing events.${key}:`, {
+                    type: typeof eventValue,
+                    isArray: Array.isArray(eventValue),
+                    length: Array.isArray(eventValue) ? eventValue.length : 'not array',
+                    keys: (eventValue && typeof eventValue === 'object' && !Array.isArray(eventValue)) ? Object.keys(eventValue).slice(0, 5) : 'not object'
+                  });
+                  
+                  if (Array.isArray(eventValue)) {
+                    // Found an array in events - likely trade data
+                    console.log(`✅ Found trade array in events.${key} with ${eventValue.length} items`);
+                    allTrades.push(...eventValue.map(trade => ({ ...trade, eventType: key })));
+                  } else if (eventValue && typeof eventValue === 'object') {
+                    // Nested object, check its values
+                    const nestedValues = Object.values(eventValue);
+                    nestedValues.forEach(nestedValue => {
+                      if (Array.isArray(nestedValue)) {
+                        console.log(`✅ Found nested trade array with ${nestedValue.length} items`);
+                        allTrades.push(...nestedValue.map(trade => ({ ...trade, eventType: key })));
+                      }
+                    });
                   }
                 });
               }
+            }
+            
+            // Fallback: check if there are other top-level arrays 
+            if (allTrades.length === 0) {
+              console.log('🔍 No trades found in events, checking other top-level properties...');
+              const dataKeys = Object.keys(data);
+              dataKeys.forEach(key => {
+                if (key !== 'events' && Array.isArray(data[key]) && data[key].length > 0) {
+                  console.log(`✅ Found potential trade array in ${key} with ${data[key].length} items`);
+                  allTrades.push(...data[key].map(trade => ({ ...trade, sourceKey: key })));
+                }
+              });
             }
             
             console.log(`🎯 Extracted ${allTrades.length} total trades from API response`);
