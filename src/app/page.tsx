@@ -287,8 +287,8 @@ export default function Home() {
                     })()
                   }
                 },
-                marketData: data?.marketData || null,
-                dexData: data?.dexData || null
+                marketData: data?.marketData || undefined,
+                dexData: data?.dexData || undefined
               };
               
               console.log('🔒 Data sanitization complete:', {
