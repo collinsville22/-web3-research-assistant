@@ -645,9 +645,25 @@ async function fetchDexScreenerData(tokenAddress) {
   }
 }
 
+// Simple rate limiting cache
+let lastRequestTime = 0;
+const RATE_LIMIT_MS = 5000; // 5 seconds between requests
+
 async function fetchSolanaTrackerData(tokenAddress) {
   try {
     console.log(`🔥 Fetching Solana Tracker data for: ${tokenAddress}`);
+    
+    // Check rate limiting
+    const now = Date.now();
+    const timeSinceLastRequest = now - lastRequestTime;
+    
+    if (timeSinceLastRequest < RATE_LIMIT_MS) {
+      const waitTime = RATE_LIMIT_MS - timeSinceLastRequest;
+      console.log(`⏳ Rate limit protection: waiting ${waitTime}ms...`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+    
+    lastRequestTime = Date.now();
     
     // Enhanced security headers with multiple authentication methods
     const secureHeaders = {
@@ -691,18 +707,20 @@ async function fetchSolanaTrackerData(tokenAddress) {
     console.log('🎯 Target Token:', tokenAddress);
     console.log('🔒 Security Headers:', Object.keys(secureHeaders));
     
-    // Use correct data.solanatracker.io endpoints to avoid rate limiting
-    const dataApiEndpoints = [
-      `${SOLANA_TRACKER_BASE}/tokens/${tokenAddress}`,
-      `${SOLANA_TRACKER_BASE}/tokens/${tokenAddress}/holders`, 
-      `${SOLANA_TRACKER_BASE}/tokens/${tokenAddress}/trades`
-    ];
+    // Use only the main token endpoint to avoid rate limiting
+    // The token endpoint contains buys, sells, holders, and other data we need
+    const primaryEndpoint = `${SOLANA_TRACKER_BASE}/tokens/${tokenAddress}`;
     
-    console.log('🎯 Using correct data API endpoints...');
-    const endpointPromises = dataApiEndpoints.map(url => {
-      console.log(`🔗 Data API endpoint: ${url}`);
-      return fetchWithTimeout(url, { headers: secureHeaders });
-    });
+    console.log('🎯 Using primary endpoint to avoid rate limiting...');
+    console.log(`🔗 Primary API endpoint: ${primaryEndpoint}`);
+    
+    // Add delay to respect rate limits
+    console.log('⏳ Adding delay to respect API rate limits...');
+    await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
+    
+    const endpointPromises = [
+      fetchWithTimeout(primaryEndpoint, { headers: secureHeaders })
+    ];
     
     const responses = await Promise.allSettled(endpointPromises);
     
@@ -828,8 +846,7 @@ async function fetchSolanaTrackerData(tokenAddress) {
 
 // Helper function to categorize endpoint types
 function getEndpointType(index) {
-  const types = ['token', 'holders', 'traders'];
-  return types[index] || 'unknown';
+  return 'token'; // We're only using the primary token endpoint now
 }
 
 // Enhanced data quality assessment
