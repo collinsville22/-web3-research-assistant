@@ -26,13 +26,16 @@ exports.handler = async (event, context) => {
 
   try {
     const requestBody = JSON.parse(event.body);
-    const { tokenInput, requestId, forceRefresh } = requestBody;
+    const { tokenInput, requestId, forceRefresh, cacheBuster, userAgent } = requestBody;
     
     console.log(`🚀 NEW ANALYSIS REQUEST:`, {
       tokenInput,
       requestId,
       forceRefresh,
+      cacheBuster,
+      userAgent: userAgent?.slice(0, 50) + '...',
       timestamp: new Date().toISOString(),
+      queryParams: event.queryStringParameters,
       headers: event.headers['cache-control'] || 'none'
     });
     

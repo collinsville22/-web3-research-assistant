@@ -88,6 +88,7 @@ export default function Home() {
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [debugMode, setDebugMode] = useState(false);
 
   const handleAnalyze = async (tokenInput: string) => {
     setIsAnalyzing(true);
@@ -99,34 +100,81 @@ export default function Home() {
     const requestId = `${tokenInput.toLowerCase()}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
     try {
-      const response = await fetch(`/.netlify/functions/analyze?nocache=${Date.now()}`, {
+      // Nuclear cache busting approach
+      const cacheBuster = `${Date.now()}-${Math.random().toString(36).substr(2, 15)}`;
+      const url = `/.netlify/functions/analyze?v=${cacheBuster}&t=${Date.now()}&r=${Math.random()}`;
+      
+      console.log(`🚀 Making request to: ${url} for token: ${tokenInput}`);
+      
+      const response = await fetch(url, {
         method: 'POST',
+        mode: 'cors',
+        cache: 'no-store', // Critical: prevent browser caching
         headers: { 
           'Content-Type': 'application/json',
           'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
           'Pragma': 'no-cache',
-          'Expires': '0'
+          'Expires': '0',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-Cache-Buster': cacheBuster
         },
         body: JSON.stringify({ 
           tokenInput: tokenInput.trim(),
           requestId,
           forceRefresh: true,
-          timestamp: new Date().getTime()
+          timestamp: new Date().getTime(),
+          cacheBuster: cacheBuster,
+          userAgent: navigator.userAgent
         })
       });
       
       const result = await response.json();
       
+      console.log(`📊 Analysis Response:`, {
+        success: result.success,
+        requestId: result.requestId,
+        timestamp: result.timestamp,
+        tokenName: result.data?.tokenInfo?.name,
+        overallScore: result.data?.analysis?.overallScore,
+        recommendation: result.data?.analysis?.recommendation
+      });
+      
       if (result.success) {
-        setAnalysisData(result.data);
+        // Force a complete state refresh
+        setTimeout(() => {
+          setAnalysisData(result.data);
+          console.log(`✅ Analysis data set for: ${result.data?.tokenInfo?.name || tokenInput}`);
+        }, 100);
       } else {
         setError(result.error || 'Analysis failed');
+        console.error('❌ Analysis failed:', result.error);
       }
     } catch (error) {
       setError('Network error occurred');
       console.error('Analysis error:', error);
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  const testEndpoint = async () => {
+    try {
+      const testData = { test: true, timestamp: Date.now() };
+      console.log('🧪 Testing endpoint...');
+      
+      const response = await fetch(`/.netlify/functions/test?test=${Date.now()}`, {
+        method: 'POST',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(testData)
+      });
+      
+      const result = await response.json();
+      console.log('🧪 Test result:', result);
+      alert(`Test successful! Server time: ${result.serverTime}, Random ID: ${result.randomId}`);
+    } catch (err) {
+      console.error('🧪 Test failed:', err);
+      alert('Test failed - check console');
     }
   };
 
@@ -163,6 +211,13 @@ export default function Home() {
           <a href="#" className="hover:text-gray-300 transition-colors">Features</a>
           <a href="#" className="hover:text-gray-300 transition-colors">API</a>
           <a href="#" className="hover:text-gray-300 transition-colors">Docs</a>
+          <button 
+            onClick={testEndpoint}
+            className="text-xs bg-red-600 hover:bg-red-700 px-2 py-1 rounded transition-colors"
+            title="Test cache busting"
+          >
+            🧪 Test
+          </button>
         </div>
       </nav>
 
