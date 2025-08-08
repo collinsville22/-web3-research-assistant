@@ -140,11 +140,41 @@ export default function Home() {
       });
       
       if (result.success) {
-        // Force a complete state refresh
-        setTimeout(() => {
-          setAnalysisData(result.data);
-          console.log(`✅ Analysis data set for: ${result.data?.tokenInfo?.name || tokenInput}`);
-        }, 100);
+        try {
+          // Force a complete state refresh with error handling
+          setTimeout(() => {
+            // Validate and sanitize the result data to prevent crashes
+            const sanitizedData = {
+              ...result.data,
+              analysis: {
+                ...result.data?.analysis,
+                keyMetrics: {
+                  ...result.data?.analysis?.keyMetrics,
+                  // Ensure traderPerformance is properly structured
+                  traderPerformance: result.data?.analysis?.keyMetrics?.traderPerformance && 
+                    typeof result.data.analysis.keyMetrics.traderPerformance === 'object' ? 
+                    {
+                      totalTraders: Number(result.data.analysis.keyMetrics.traderPerformance.totalTraders) || 0,
+                      profitableTraders: Number(result.data.analysis.keyMetrics.traderPerformance.profitableTraders) || 0,
+                      losingTraders: Number(result.data.analysis.keyMetrics.traderPerformance.losingTraders) || 0,
+                      averageProfit: Number(result.data.analysis.keyMetrics.traderPerformance.averageProfit) || 0,
+                      averageLoss: Number(result.data.analysis.keyMetrics.traderPerformance.averageLoss) || 0,
+                      topProfitAmount: Number(result.data.analysis.keyMetrics.traderPerformance.topProfitAmount) || 0,
+                      topLossAmount: Number(result.data.analysis.keyMetrics.traderPerformance.topLossAmount) || 0,
+                      winRate: Number(result.data.analysis.keyMetrics.traderPerformance.winRate) || 0,
+                      totalVolume: Number(result.data.analysis.keyMetrics.traderPerformance.totalVolume) || 0
+                    } : null
+                }
+              }
+            };
+            
+            setAnalysisData(sanitizedData);
+            console.log(`✅ Analysis data set for: ${sanitizedData?.tokenInfo?.name || tokenInput}`);
+          }, 100);
+        } catch (dataProcessingError) {
+          console.error('❌ Frontend data processing error:', dataProcessingError);
+          setError('Analysis completed but failed to display results. Please try again.');
+        }
       } else {
         setError(result.error || 'Analysis failed');
         console.error('❌ Analysis failed:', result.error);
@@ -423,7 +453,9 @@ export default function Home() {
               )}
 
               {/* Solana Trader Performance Analysis */}
-              {analysisData.analysis.keyMetrics.traderPerformance && analysisData.tokenInfo.blockchain === 'solana' && (
+              {analysisData.analysis.keyMetrics.traderPerformance && 
+               analysisData.tokenInfo.blockchain === 'solana' && 
+               analysisData.analysis.keyMetrics.traderPerformance.totalTraders > 0 && (
                 <div className="bg-gradient-to-r from-orange-900/20 to-yellow-900/20 border border-orange-500/30 rounded-lg p-6 mb-8">
                   <h3 className="text-xl font-semibold mb-6 flex items-center">
                     <span className="w-3 h-3 bg-orange-400 rounded-full mr-3 animate-pulse"></span>
@@ -433,25 +465,25 @@ export default function Home() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                     <div className="text-center">
                       <div className="text-2xl font-bold text-orange-400">
-                        {analysisData.analysis.keyMetrics.traderPerformance.totalTraders}
+                        {analysisData.analysis.keyMetrics.traderPerformance.totalTraders || 0}
                       </div>
                       <div className="text-xs text-gray-400">Total Traders</div>
                     </div>
                     <div className="text-center">
                       <div className="text-2xl font-bold text-green-400">
-                        {analysisData.analysis.keyMetrics.traderPerformance.winRate.toFixed(1)}%
+                        {(analysisData.analysis.keyMetrics.traderPerformance.winRate || 0).toFixed(1)}%
                       </div>
                       <div className="text-xs text-gray-400">Win Rate</div>
                     </div>
                     <div className="text-center">
                       <div className="text-2xl font-bold text-green-400">
-                        {analysisData.analysis.keyMetrics.traderPerformance.profitableTraders}
+                        {analysisData.analysis.keyMetrics.traderPerformance.profitableTraders || 0}
                       </div>
                       <div className="text-xs text-gray-400">Profitable Traders</div>
                     </div>
                     <div className="text-center">
                       <div className="text-2xl font-bold text-red-400">
-                        {analysisData.analysis.keyMetrics.traderPerformance.losingTraders}
+                        {analysisData.analysis.keyMetrics.traderPerformance.losingTraders || 0}
                       </div>
                       <div className="text-xs text-gray-400">Losing Traders</div>
                     </div>
@@ -464,13 +496,13 @@ export default function Home() {
                         <div className="flex justify-between">
                           <span className="text-sm text-gray-300">Highest Profit:</span>
                           <span className="text-sm font-bold text-green-400">
-                            ${analysisData.analysis.keyMetrics.traderPerformance.topProfitAmount.toLocaleString()}
+                            ${(analysisData.analysis.keyMetrics.traderPerformance.topProfitAmount || 0).toLocaleString()}
                           </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-sm text-gray-300">Average Profit:</span>
                           <span className="text-sm font-bold text-green-400">
-                            ${analysisData.analysis.keyMetrics.traderPerformance.averageProfit.toLocaleString()}
+                            ${(analysisData.analysis.keyMetrics.traderPerformance.averageProfit || 0).toLocaleString()}
                           </span>
                         </div>
                       </div>
@@ -482,13 +514,13 @@ export default function Home() {
                         <div className="flex justify-between">
                           <span className="text-sm text-gray-300">Biggest Loss:</span>
                           <span className="text-sm font-bold text-red-400">
-                            -${analysisData.analysis.keyMetrics.traderPerformance.topLossAmount.toLocaleString()}
+                            -${(analysisData.analysis.keyMetrics.traderPerformance.topLossAmount || 0).toLocaleString()}
                           </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-sm text-gray-300">Average Loss:</span>
                           <span className="text-sm font-bold text-red-400">
-                            -${analysisData.analysis.keyMetrics.traderPerformance.averageLoss.toLocaleString()}
+                            -${(analysisData.analysis.keyMetrics.traderPerformance.averageLoss || 0).toLocaleString()}
                           </span>
                         </div>
                       </div>
@@ -499,7 +531,7 @@ export default function Home() {
                     <div className="flex justify-between items-center">
                       <span className="text-gray-300">Total Trading Volume:</span>
                       <span className="text-lg font-bold text-blue-400">
-                        ${analysisData.analysis.keyMetrics.traderPerformance.totalVolume.toLocaleString()}
+                        ${(analysisData.analysis.keyMetrics.traderPerformance.totalVolume || 0).toLocaleString()}
                       </span>
                     </div>
                   </div>
