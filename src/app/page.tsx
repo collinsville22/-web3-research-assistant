@@ -11,6 +11,18 @@ interface TokenInfo {
   description: string;
 }
 
+interface TraderPerformance {
+  totalTraders: number;
+  profitableTraders: number;
+  losingTraders: number;
+  averageProfit: number;
+  averageLoss: number;
+  topProfitAmount: number;
+  topLossAmount: number;
+  winRate: number;
+  totalVolume: number;
+}
+
 interface KeyMetrics {
   currentPrice: number;
   marketCap: number;
@@ -32,7 +44,9 @@ interface KeyMetrics {
   developerScore: number;
   publicInterestScore: number;
   marketCapRank: number;
+  traderPerformance: TraderPerformance | null;
   primaryDataSource: string;
+  hasSolanaData: boolean;
 }
 
 interface Analysis {
@@ -188,44 +202,6 @@ export default function Home() {
                       {analysisData.tokenInfo.address.slice(0, 8)}...{analysisData.tokenInfo.address.slice(-6)}
                     </button>
                   </div>
-                  
-                  {/* Social Links */}
-                  {(analysisData.tokenInfo.socialLinks?.twitter || 
-                    analysisData.tokenInfo.socialLinks?.telegram || 
-                    (analysisData.tokenInfo.websites && analysisData.tokenInfo.websites.length > 0)) && (
-                    <div className="flex items-center mt-3 space-x-3">
-                      {analysisData.tokenInfo.websites && analysisData.tokenInfo.websites.length > 0 && (
-                        <a 
-                          href={analysisData.tokenInfo.websites[0]} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-blue-400 hover:text-blue-300 text-sm"
-                        >
-                          🌐 Website
-                        </a>
-                      )}
-                      {analysisData.tokenInfo.socialLinks?.twitter && (
-                        <a 
-                          href={`https://twitter.com/${analysisData.tokenInfo.socialLinks.twitter}`} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-blue-400 hover:text-blue-300 text-sm"
-                        >
-                          🐦 Twitter
-                        </a>
-                      )}
-                      {analysisData.tokenInfo.socialLinks?.telegram && (
-                        <a 
-                          href={`https://t.me/${analysisData.tokenInfo.socialLinks.telegram}`} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-blue-400 hover:text-blue-300 text-sm"
-                        >
-                          ✈️ Telegram
-                        </a>
-                      )}
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -383,6 +359,94 @@ export default function Home() {
                   </div>
                 </div>
               )}
+
+              {/* Solana Trader Performance Analysis */}
+              {analysisData.analysis.keyMetrics.traderPerformance && analysisData.tokenInfo.blockchain === 'solana' && (
+                <div className="bg-gradient-to-r from-orange-900/20 to-yellow-900/20 border border-orange-500/30 rounded-lg p-6 mb-8">
+                  <h3 className="text-xl font-semibold mb-6 flex items-center">
+                    <span className="w-3 h-3 bg-orange-400 rounded-full mr-3 animate-pulse"></span>
+                    🔥 Solana Trader Performance Analysis
+                  </h3>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-orange-400">
+                        {analysisData.analysis.keyMetrics.traderPerformance.totalTraders}
+                      </div>
+                      <div className="text-xs text-gray-400">Total Traders</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-400">
+                        {analysisData.analysis.keyMetrics.traderPerformance.winRate.toFixed(1)}%
+                      </div>
+                      <div className="text-xs text-gray-400">Win Rate</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-400">
+                        {analysisData.analysis.keyMetrics.traderPerformance.profitableTraders}
+                      </div>
+                      <div className="text-xs text-gray-400">Profitable Traders</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-red-400">
+                        {analysisData.analysis.keyMetrics.traderPerformance.losingTraders}
+                      </div>
+                      <div className="text-xs text-gray-400">Losing Traders</div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-gray-800/50 p-4 rounded-lg">
+                      <h4 className="text-lg font-semibold text-green-400 mb-3">💰 Top Performers</h4>
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-300">Highest Profit:</span>
+                          <span className="text-sm font-bold text-green-400">
+                            ${analysisData.analysis.keyMetrics.traderPerformance.topProfitAmount.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-300">Average Profit:</span>
+                          <span className="text-sm font-bold text-green-400">
+                            ${analysisData.analysis.keyMetrics.traderPerformance.averageProfit.toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-gray-800/50 p-4 rounded-lg">
+                      <h4 className="text-lg font-semibold text-red-400 mb-3">📉 Risk Analysis</h4>
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-300">Biggest Loss:</span>
+                          <span className="text-sm font-bold text-red-400">
+                            -${analysisData.analysis.keyMetrics.traderPerformance.topLossAmount.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-300">Average Loss:</span>
+                          <span className="text-sm font-bold text-red-400">
+                            -${analysisData.analysis.keyMetrics.traderPerformance.averageLoss.toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 p-4 bg-gray-800/30 rounded-lg">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-300">Total Trading Volume:</span>
+                      <span className="text-lg font-bold text-blue-400">
+                        ${analysisData.analysis.keyMetrics.traderPerformance.totalVolume.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 text-center text-xs text-gray-500">
+                    Data powered by Solana Tracker - Real trader performance metrics
+                  </div>
+                </div>
+              )}
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 <div>
@@ -419,10 +483,12 @@ export default function Home() {
                       <span>DEX Data:</span>
                       <span className="text-green-400">DexScreener</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span>Social & Links:</span>
-                      <span className="text-purple-400">CoinGecko</span>
-                    </div>
+                    {analysisData.analysis.keyMetrics.hasSolanaData && (
+                      <div className="flex justify-between">
+                        <span>Trader Data:</span>
+                        <span className="text-orange-400">Solana Tracker</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 

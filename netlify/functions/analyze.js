@@ -45,6 +45,13 @@ exports.handler = async (event, context) => {
     const blockchainInfo = detectBlockchain(tokenInput, coinGeckoData, birdeyeData, dexData);
     const tokenInfo = resolveTokenInfo(tokenInput, coinGeckoData, birdeyeData, dexData, blockchainInfo);
     
+    // Fetch Solana Tracker data if it's a Solana token
+    let solanaTrackerData = null;
+    if (blockchainInfo.blockchain === 'solana' && blockchainInfo.isContractAddress) {
+      console.log('🔥 Detected Solana token, fetching trader performance data...');
+      solanaTrackerData = await fetchSolanaTrackerData(tokenInput);
+    }
+    
     // Prepare comprehensive project data for JuliaOS agents
     const projectData = {
       tokenInfo: tokenInfo,
@@ -52,8 +59,9 @@ exports.handler = async (event, context) => {
       marketData: coinGeckoData,
       birdeyeData: birdeyeData,
       dexData: dexData,
+      solanaTrackerData: solanaTrackerData,
       analysis: {
-        keyMetrics: extractComprehensiveMetrics(coinGeckoData, birdeyeData, dexData)
+        keyMetrics: extractComprehensiveMetrics(coinGeckoData, birdeyeData, dexData, solanaTrackerData)
       }
     };
     
@@ -110,6 +118,8 @@ exports.handler = async (event, context) => {
 const COINGECKO_BASE = 'https://api.coingecko.com/api/v3';
 const BIRDEYE_BASE = 'https://public-api.birdeye.so/public';
 const DEXSCREENER_BASE = 'https://api.dexscreener.com/latest/dex';
+const SOLANA_TRACKER_BASE = 'https://data.solanatracker.io';
+const SOLANA_TRACKER_API_KEY = '4a522555-848e-4877-ae22-6cea2c89d8b8';
 
 // Blockchain detection and comprehensive data extraction functions
 function detectBlockchain(tokenInput, coinGeckoData, birdeyeData, dexData) {
@@ -181,7 +191,7 @@ function resolveTokenInfo(tokenInput, coinGeckoData, birdeyeData, dexData, block
   };
 }
 
-function extractComprehensiveMetrics(coinGeckoData, birdeyeData, dexData) {
+function extractComprehensiveMetrics(coinGeckoData, birdeyeData, dexData, solanaTrackerData) {
   console.log('🔍 Data extraction debug:', {
     coinGeckoExists: !!coinGeckoData,
     coinGeckoPrice: coinGeckoData?.market_data?.current_price?.usd,
@@ -219,10 +229,19 @@ function extractComprehensiveMetrics(coinGeckoData, birdeyeData, dexData) {
     marketCap = dexData.pairs[0].marketCap || 0;
     volume24h = dexData.pairs[0].volume?.h24 || 0;
     priceChange24h = dexData.pairs[0].priceChange?.h24 || 0;
-    // DexScreener doesn't have reliable supply data
-    circulatingSupply = 0;
-    totalSupply = 0;
-    maxSupply = 0;
+    
+    // Try to calculate supply from market cap and price
+    if (marketCap > 0 && currentPrice > 0) {
+      circulatingSupply = marketCap / currentPrice;
+      totalSupply = dexData.pairs[0].fdv && dexData.pairs[0].fdv > marketCap ? 
+                   (dexData.pairs[0].fdv / currentPrice) : circulatingSupply;
+      maxSupply = totalSupply;
+      console.log('💡 Calculated supply from market cap:', { circulatingSupply, totalSupply });
+    } else {
+      circulatingSupply = 0;
+      totalSupply = 0;
+      maxSupply = 0;
+    }
     
     console.log('✅ Using DexScreener data:', { currentPrice, marketCap, volume24h });
   } else if (hasBirdeyeData) {
@@ -310,8 +329,12 @@ function extractComprehensiveMetrics(coinGeckoData, birdeyeData, dexData) {
     // Market rank
     marketCapRank: coinGeckoData?.market_cap_rank || 0,
     
+    // Solana Tracker Performance (for Solana tokens only)
+    traderPerformance: solanaTrackerData?.performance || null,
+    
     // Data source indicator
-    primaryDataSource: dataSource
+    primaryDataSource: dataSource,
+    hasSolanaData: !!solanaTrackerData
   };
 }
 
@@ -419,6 +442,138 @@ async function fetchDexScreenerData(tokenAddress) {
   } catch (error) {
     console.error('❌ DexScreener API error:', error.message);
     return null;
+  }
+}
+
+async function fetchSolanaTrackerData(tokenAddress) {
+  try {
+    console.log(`🔥 Fetching Solana Tracker data for: ${tokenAddress}`);
+    
+    const headers = {
+      'x-api-key': SOLANA_TRACKER_API_KEY,
+      'Content-Type': 'application/json'
+    };
+    
+    // Fetch multiple endpoints in parallel for comprehensive analysis
+    const [tokenData, holdersData, topTradersData, firstBuyersData] = await Promise.allSettled([
+      fetch(`${SOLANA_TRACKER_BASE}/tokens/${tokenAddress}`, { headers }),
+      fetch(`${SOLANA_TRACKER_BASE}/tokens/${tokenAddress}/holders`, { headers }),
+      fetch(`${SOLANA_TRACKER_BASE}/top-traders/${tokenAddress}`, { headers }),
+      fetch(`${SOLANA_TRACKER_BASE}/first-buyers/${tokenAddress}`, { headers })
+    ]);
+    
+    // Parse successful responses
+    const results = {
+      tokenInfo: null,
+      holders: null,
+      topTraders: null,
+      firstBuyers: null
+    };
+    
+    if (tokenData.status === 'fulfilled' && tokenData.value.ok) {
+      results.tokenInfo = await tokenData.value.json();
+      console.log('✅ Got Solana Tracker token info');
+    }
+    
+    if (holdersData.status === 'fulfilled' && holdersData.value.ok) {
+      results.holders = await holdersData.value.json();
+      console.log(`✅ Got ${results.holders?.length || 0} holders data`);
+    }
+    
+    if (topTradersData.status === 'fulfilled' && topTradersData.value.ok) {
+      results.topTraders = await topTradersData.value.json();
+      console.log(`✅ Got ${results.topTraders?.length || 0} top traders`);
+    }
+    
+    if (firstBuyersData.status === 'fulfilled' && firstBuyersData.value.ok) {
+      results.firstBuyers = await firstBuyersData.value.json();
+      console.log(`✅ Got ${results.firstBuyers?.length || 0} first buyers`);
+    }
+    
+    // Calculate trader performance metrics
+    const performance = calculateTraderPerformance(results);
+    
+    return {
+      ...results,
+      performance,
+      timestamp: new Date().toISOString()
+    };
+    
+  } catch (error) {
+    console.error('❌ Solana Tracker API error:', error.message);
+    return null;
+  }
+}
+
+function calculateTraderPerformance(solanaData) {
+  const performance = {
+    totalTraders: 0,
+    profitableTraders: 0,
+    losingTraders: 0,
+    averageProfit: 0,
+    averageLoss: 0,
+    topProfitAmount: 0,
+    topLossAmount: 0,
+    winRate: 0,
+    totalVolume: 0
+  };
+  
+  try {
+    // Analyze first buyers for early performance metrics
+    if (solanaData.firstBuyers && Array.isArray(solanaData.firstBuyers)) {
+      const traders = solanaData.firstBuyers;
+      performance.totalTraders = traders.length;
+      
+      let totalProfit = 0;
+      let totalLoss = 0;
+      let profitableCount = 0;
+      let losingCount = 0;
+      
+      traders.forEach(trader => {
+        const pnl = trader.pnl || trader.total_pnl || 0;
+        const volume = trader.volume || 0;
+        
+        performance.totalVolume += volume;
+        
+        if (pnl > 0) {
+          totalProfit += pnl;
+          profitableCount++;
+          if (pnl > performance.topProfitAmount) {
+            performance.topProfitAmount = pnl;
+          }
+        } else if (pnl < 0) {
+          totalLoss += Math.abs(pnl);
+          losingCount++;
+          if (Math.abs(pnl) > performance.topLossAmount) {
+            performance.topLossAmount = Math.abs(pnl);
+          }
+        }
+      });
+      
+      performance.profitableTraders = profitableCount;
+      performance.losingTraders = losingCount;
+      performance.averageProfit = profitableCount > 0 ? totalProfit / profitableCount : 0;
+      performance.averageLoss = losingCount > 0 ? totalLoss / losingCount : 0;
+      performance.winRate = performance.totalTraders > 0 ? (profitableCount / performance.totalTraders) * 100 : 0;
+    }
+    
+    // Enhance with top traders data if available
+    if (solanaData.topTraders && Array.isArray(solanaData.topTraders)) {
+      // Update top profit if we have better data
+      solanaData.topTraders.forEach(trader => {
+        const pnl = trader.pnl || trader.total_pnl || 0;
+        if (pnl > performance.topProfitAmount) {
+          performance.topProfitAmount = pnl;
+        }
+      });
+    }
+    
+    console.log('📊 Calculated trader performance:', performance);
+    return performance;
+    
+  } catch (error) {
+    console.error('❌ Error calculating trader performance:', error);
+    return performance;
   }
 }
 
