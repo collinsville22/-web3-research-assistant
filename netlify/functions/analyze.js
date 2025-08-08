@@ -760,24 +760,79 @@ async function fetchSolanaTrackerData(tokenAddress) {
             results.tokenInfo = data;
             
             // Extract trader data from token endpoint
-            if (data.buys && data.sells) {
-              console.log('🔍 Extracting trader data from token endpoint...');
-              console.log('📊 Token data structure:', {
-                hasBuys: !!data.buys,
-                buysLength: Array.isArray(data.buys) ? data.buys.length : 'not array',
-                hasSells: !!data.sells, 
-                sellsLength: Array.isArray(data.sells) ? data.sells.length : 'not array',
-                hasEvents: !!data.events,
-                eventsLength: Array.isArray(data.events) ? data.events.length : 'not array'
-              });
-              
-              // Combine buy and sell data to create trader performance
-              const allTrades = [];
-              if (Array.isArray(data.buys)) allTrades.push(...data.buys);
-              if (Array.isArray(data.sells)) allTrades.push(...data.sells);
-              
+            console.log('🔍 Extracting trader data from token endpoint...');
+            console.log('📊 Token data structure:', {
+              hasBuys: !!data.buys,
+              buysType: typeof data.buys,
+              buysLength: Array.isArray(data.buys) ? data.buys.length : 'not array',
+              buysKeys: data.buys ? Object.keys(data.buys).slice(0, 5) : 'no buys',
+              hasSells: !!data.sells, 
+              sellsType: typeof data.sells,
+              sellsLength: Array.isArray(data.sells) ? data.sells.length : 'not array',
+              sellsKeys: data.sells ? Object.keys(data.sells).slice(0, 5) : 'no sells',
+              hasEvents: !!data.events,
+              eventsType: typeof data.events,
+              eventsLength: Array.isArray(data.events) ? data.events.length : 'not array'
+            });
+            
+            // Handle different data structures
+            const allTrades = [];
+            
+            // Extract from buys data
+            if (data.buys) {
+              if (Array.isArray(data.buys)) {
+                allTrades.push(...data.buys.map(trade => ({ ...trade, type: 'buy' })));
+              } else if (typeof data.buys === 'object') {
+                // If buys is an object, try to extract values or nested arrays
+                const buysValues = Object.values(data.buys);
+                buysValues.forEach(value => {
+                  if (Array.isArray(value)) {
+                    allTrades.push(...value.map(trade => ({ ...trade, type: 'buy' })));
+                  }
+                });
+              }
+            }
+            
+            // Extract from sells data
+            if (data.sells) {
+              if (Array.isArray(data.sells)) {
+                allTrades.push(...data.sells.map(trade => ({ ...trade, type: 'sell' })));
+              } else if (typeof data.sells === 'object') {
+                // If sells is an object, try to extract values or nested arrays
+                const sellsValues = Object.values(data.sells);
+                sellsValues.forEach(value => {
+                  if (Array.isArray(value)) {
+                    allTrades.push(...value.map(trade => ({ ...trade, type: 'sell' })));
+                  }
+                });
+              }
+            }
+            
+            // Extract from events if no trade data found
+            if (allTrades.length === 0 && data.events) {
+              if (Array.isArray(data.events)) {
+                allTrades.push(...data.events);
+              } else if (typeof data.events === 'object') {
+                const eventsValues = Object.values(data.events);
+                eventsValues.forEach(value => {
+                  if (Array.isArray(value)) {
+                    allTrades.push(...value);
+                  }
+                });
+              }
+            }
+            
+            console.log(`🎯 Extracted ${allTrades.length} total trades from API response`);
+            
+            if (allTrades.length > 0) {
               results.topTraders = allTrades;
               results.firstBuyers = allTrades.slice(0, 50); // First 50 for early buyers analysis
+              
+              // Log sample trade data
+              console.log('📋 Sample trade data:', allTrades[0] ? {
+                keys: Object.keys(allTrades[0]),
+                sampleData: JSON.stringify(allTrades[0]).slice(0, 200) + '...'
+              } : 'No trades available');
             }
             
           } else if (endpointType === 'holders' && !results.holders && data) {
